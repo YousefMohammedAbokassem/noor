@@ -1,0 +1,76 @@
+{
+  "id": 111,
+  "nameAr": "المسد",
+  "nameSimple": "Al-Masad",
+  "nameComplex": "Al-Masad",
+  "translatedName": "The Palm Fiber",
+  "translatedNameLanguage": "english",
+  "revelationPlace": "makkah",
+  "revelationOrder": 6,
+  "versesCount": 5,
+  "bismillahPre": true,
+  "startPage": 603,
+  "endPage": 603,
+  "verses": [
+    {
+      "id": 6217,
+      "verseKey": "111:1",
+      "verseNumber": 1,
+      "pageNumber": 603,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 555,
+      "manzilNumber": 7,
+      "text": " تَبَّتْ يَدَآ أَبِى لَهَبٍ وَتَبَّ"
+    },
+    {
+      "id": 6218,
+      "verseKey": "111:2",
+      "verseNumber": 2,
+      "pageNumber": 603,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 555,
+      "manzilNumber": 7,
+      "text": "مَآ أَغْنَىٰ عَنْهُ مَالُهُۥ وَمَا كَسَبَ"
+    },
+    {
+      "id": 6219,
+      "verseKey": "111:3",
+      "verseNumber": 3,
+      "pageNumber": 603,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 555,
+      "manzilNumber": 7,
+      "text": "سَيَصْلَىٰ نَارًا ذَاتَ لَهَبٍ"
+    },
+    {
+      "id": 6220,
+      "verseKey": "111:4",
+      "verseNumber": 4,
+      "pageNumber": 603,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 555,
+      "manzilNumber": 7,
+      "text": "وَٱمْرَأَتُهُۥ حَمَّالَةَ ٱلْحَطَبِ"
+    },
+    {
+      "id": 6221,
+      "verseKey": "111:5",
+      "verseNumber": 5,
+      "pageNumber": 603,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 555,
+      "manzilNumber": 7,
+      "text": "فِى جِيدِهَا حَبْلٌ مِّن مَّسَدٍۭ"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "NOOR AL-HAYAH",
+    "slug": "noor-al-hayah",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/app-icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "nooralhayah",
+    "splash": {
+      "image": "./assets/app-splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D3B2E"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nooralhayah.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "NSLocationWhenInUseUsageDescription": "نحتاج الموقع فقط لحساب مواقيت الصلاة بدقة واتجاه القبلة.",
+        "NSUserNotificationsUsageDescription": "نستخدم الإشعارات لتنبيهات الأذان والورد والأذكار في أوقاتها."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-adaptive-foreground.png",
+        "backgroundColor": "#0D3B2E"
+      },
+      "versionCode": 1,
+      "package": "com.nooralhayah.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "SCHEDULE_EXACT_ALARM",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "plugins": [
+      "expo-localization",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/app-notification-icon.png",
+          "color": "#D4AF37",
+          "sounds": [
+            "./assets/audio/adhan/abdul_basit_adhan.mp3",
+            "./assets/audio/adhan/haram_makki_adhan.mp3",
+            "./assets/audio/adhan/haram_nabawi_adhan.mp3"
+          ]
+        }
+      ],
+      "expo-background-task"
+    ],
+    "extra": {
+      "apiBaseUrl": "https://api.noor-alhayah.app/api/v1",
+      "eas": {
+        "projectId": "d1a989ea-8d4d-45a0-8579-2f8bed476306"
+      }
+    },
+    "owner": "yousef2000q"
+  }
+}

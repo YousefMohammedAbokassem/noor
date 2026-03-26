@@ -1,0 +1,112 @@
+{
+  "id": 95,
+  "nameAr": "التين",
+  "nameSimple": "At-Tin",
+  "nameComplex": "At-Tīn",
+  "translatedName": "The Fig",
+  "translatedNameLanguage": "english",
+  "revelationPlace": "makkah",
+  "revelationOrder": 28,
+  "versesCount": 8,
+  "bismillahPre": true,
+  "startPage": 597,
+  "endPage": 597,
+  "verses": [
+    {
+      "id": 6099,
+      "verseKey": "95:1",
+      "verseNumber": 1,
+      "pageNumber": 597,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 539,
+      "manzilNumber": 7,
+      "text": "وَٱلتِّينِ وَٱلزَّيْتُونِ"
+    },
+    {
+      "id": 6100,
+      "verseKey": "95:2",
+      "verseNumber": 2,
+      "pageNumber": 597,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 539,
+      "manzilNumber": 7,
+      "text": "وَطُورِ سِينِينَ"
+    },
+    {
+      "id": 6101,
+      "verseKey": "95:3",
+      "verseNumber": 3,
+      "pageNumber": 597,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 539,
+      "manzilNumber": 7,
+      "text": "وَهَـٰذَا ٱلْبَلَدِ ٱلْأَمِينِ"
+    },
+    {
+      "id": 6102,
+      "verseKey": "95:4",
+      "verseNumber": 4,
+      "pageNumber": 597,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 539,
+      "manzilNumber": 7,
+      "text": "لَقَدْ خَلَقْنَا ٱلْإِنسَـٰنَ فِىٓ أَحْسَنِ تَقْوِيمٍ"
+    },
+    {
+      "id": 6103,
+      "verseKey": "95:5",
+      "verseNumber": 5,
+      "pageNumber": 597,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 539,
+      "manzilNumber": 7,
+      "text": "ثُمَّ رَدَدْنَـٰهُ أَسْفَلَ سَـٰفِلِينَ"
+    },
+    {
+      "id": 6104,
+      "verseKey": "95:6",
+      "verseNumber": 6,
+      "pageNumber": 597,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 539,
+      "manzilNumber": 7,
+      "text": "إِلَّا ٱلَّذِينَ ءَامَنُوا۟ وَعَمِلُوا۟ ٱلصَّـٰلِحَـٰتِ فَلَهُمْ أَجْرٌ غَيْرُ مَمْنُونٍ"
+    },
+    {
+      "id": 6105,
+      "verseKey": "95:7",
+      "verseNumber": 7,
+      "pageNumber": 597,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 539,
+      "manzilNumber": 7,
+      "text": "فَمَا يُكَذِّبُكَ بَعْدُ بِٱلدِّينِ"
+    },
+    {
+      "id": 6106,
+      "verseKey": "95:8",
+      "verseNumber": 8,
+      "pageNumber": 597,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 539,
+      "manzilNumber": 7,
+      "text": "أَلَيْسَ ٱللَّهُ بِأَحْكَمِ ٱلْحَـٰكِمِينَ"
+    }
+  ]
+}

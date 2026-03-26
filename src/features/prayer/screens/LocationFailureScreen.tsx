@@ -1,0 +1,74 @@
+import React from 'react';
+import { Image, StyleSheet, View } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
+import { RootStackParamList } from '@/navigation/types';
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
+import { AppButton } from '@/components/ui/AppButton';
+import { useSettingsStore } from '@/state/settingsStore';
+import { getThemeByMode } from '@/theme';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'LocationFailure'>;
+
+export const LocationFailureScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
+  const mode = useSettingsStore((s) => s.readerTheme);
+  const theme = getThemeByMode(mode);
+
+  return (
+    <Screen showDecorations={false} contentStyle={styles.content}>
+      <View style={styles.heroWrap}>
+        <View style={[styles.heroCircle, { backgroundColor: theme.colors.neutral.surfaceAlt }]}>
+          <Image source={require('../../../../assets/prayer-failure.png')} style={styles.heroImage} resizeMode="contain" />
+        </View>
+      </View>
+
+      <View style={styles.copyWrap}>
+        <AppText variant="headingLg" style={styles.centerText}>
+          {t('prayer.failure')}
+        </AppText>
+        <AppText variant="bodyLg" style={styles.centerText} color={theme.colors.neutral.textSecondary}>
+          {t('prayer.failureHint')}
+        </AppText>
+      </View>
+
+      <View style={styles.actions}>
+        <AppButton title={t('common.tryAgain')} onPress={() => navigation.navigate('PrayerLoading')} />
+        <AppButton title={t('prayer.manualCity')} variant="ghost" onPress={() => navigation.navigate('ManualCity')} />
+      </View>
+    </Screen>
+  );
+};
+
+const styles = StyleSheet.create({
+  content: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    paddingVertical: 20,
+  },
+  heroWrap: {
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  heroCircle: {
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroImage: {
+    width: 146,
+    height: 146,
+  },
+  copyWrap: {
+    gap: 8,
+  },
+  centerText: {
+    textAlign: 'center',
+  },
+  actions: {
+    gap: 10,
+  },
+});

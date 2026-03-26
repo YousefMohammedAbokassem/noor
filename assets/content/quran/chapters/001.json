@@ -1,0 +1,100 @@
+{
+  "id": 1,
+  "nameAr": "الفاتحة",
+  "nameSimple": "Al-Fatihah",
+  "nameComplex": "Al-Fātiĥah",
+  "translatedName": "سورة الفاتحة",
+  "translatedNameLanguage": "arabic",
+  "revelationPlace": "makkah",
+  "revelationOrder": 5,
+  "versesCount": 7,
+  "bismillahPre": false,
+  "startPage": 1,
+  "endPage": 1,
+  "verses": [
+    {
+      "id": 1,
+      "verseKey": "1:1",
+      "verseNumber": 1,
+      "pageNumber": 1,
+      "juzNumber": 1,
+      "hizbNumber": 1,
+      "rubElHizbNumber": 1,
+      "rukuNumber": 1,
+      "manzilNumber": 1,
+      "text": "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ"
+    },
+    {
+      "id": 2,
+      "verseKey": "1:2",
+      "verseNumber": 2,
+      "pageNumber": 1,
+      "juzNumber": 1,
+      "hizbNumber": 1,
+      "rubElHizbNumber": 1,
+      "rukuNumber": 1,
+      "manzilNumber": 1,
+      "text": "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ"
+    },
+    {
+      "id": 3,
+      "verseKey": "1:3",
+      "verseNumber": 3,
+      "pageNumber": 1,
+      "juzNumber": 1,
+      "hizbNumber": 1,
+      "rubElHizbNumber": 1,
+      "rukuNumber": 1,
+      "manzilNumber": 1,
+      "text": "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ"
+    },
+    {
+      "id": 4,
+      "verseKey": "1:4",
+      "verseNumber": 4,
+      "pageNumber": 1,
+      "juzNumber": 1,
+      "hizbNumber": 1,
+      "rubElHizbNumber": 1,
+      "rukuNumber": 1,
+      "manzilNumber": 1,
+      "text": "مَـٰلِكِ يَوْمِ ٱلدِّينِ"
+    },
+    {
+      "id": 5,
+      "verseKey": "1:5",
+      "verseNumber": 5,
+      "pageNumber": 1,
+      "juzNumber": 1,
+      "hizbNumber": 1,
+      "rubElHizbNumber": 1,
+      "rukuNumber": 1,
+      "manzilNumber": 1,
+      "text": "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ"
+    },
+    {
+      "id": 6,
+      "verseKey": "1:6",
+      "verseNumber": 6,
+      "pageNumber": 1,
+      "juzNumber": 1,
+      "hizbNumber": 1,
+      "rubElHizbNumber": 1,
+      "rukuNumber": 1,
+      "manzilNumber": 1,
+      "text": "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ"
+    },
+    {
+      "id": 7,
+      "verseKey": "1:7",
+      "verseNumber": 7,
+      "pageNumber": 1,
+      "juzNumber": 1,
+      "hizbNumber": 1,
+      "rubElHizbNumber": 1,
+      "rukuNumber": 1,
+      "manzilNumber": 1,
+      "text": "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": 106,
+  "nameAr": "قريش",
+  "nameSimple": "Quraysh",
+  "nameComplex": "Quraysh",
+  "translatedName": "Quraysh",
+  "translatedNameLanguage": "english",
+  "revelationPlace": "makkah",
+  "revelationOrder": 29,
+  "versesCount": 4,
+  "bismillahPre": true,
+  "startPage": 602,
+  "endPage": 602,
+  "verses": [
+    {
+      "id": 6194,
+      "verseKey": "106:1",
+      "verseNumber": 1,
+      "pageNumber": 602,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 550,
+      "manzilNumber": 7,
+      "text": " لِإِيلَـٰفِ قُرَيْشٍ"
+    },
+    {
+      "id": 6195,
+      "verseKey": "106:2",
+      "verseNumber": 2,
+      "pageNumber": 602,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 550,
+      "manzilNumber": 7,
+      "text": "إِۦلَـٰفِهِمْ رِحْلَةَ ٱلشِّتَآءِ وَٱلصَّيْفِ"
+    },
+    {
+      "id": 6196,
+      "verseKey": "106:3",
+      "verseNumber": 3,
+      "pageNumber": 602,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 550,
+      "manzilNumber": 7,
+      "text": "فَلْيَعْبُدُوا۟ رَبَّ هَـٰذَا ٱلْبَيْتِ"
+    },
+    {
+      "id": 6197,
+      "verseKey": "106:4",
+      "verseNumber": 4,
+      "pageNumber": 602,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 550,
+      "manzilNumber": 7,
+      "text": "ٱلَّذِىٓ أَطْعَمَهُم مِّن جُوعٍ وَءَامَنَهُم مِّنْ خَوْفٍۭ"
+    }
+  ]
+}

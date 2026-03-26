@@ -1,0 +1,112 @@
+{
+  "id": 94,
+  "nameAr": "الشرح",
+  "nameSimple": "Ash-Sharh",
+  "nameComplex": "Ash-Sharĥ",
+  "translatedName": "The Relief",
+  "translatedNameLanguage": "english",
+  "revelationPlace": "makkah",
+  "revelationOrder": 12,
+  "versesCount": 8,
+  "bismillahPre": true,
+  "startPage": 596,
+  "endPage": 596,
+  "verses": [
+    {
+      "id": 6091,
+      "verseKey": "94:1",
+      "verseNumber": 1,
+      "pageNumber": 596,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 538,
+      "manzilNumber": 7,
+      "text": " أَلَمْ نَشْرَحْ لَكَ صَدْرَكَ"
+    },
+    {
+      "id": 6092,
+      "verseKey": "94:2",
+      "verseNumber": 2,
+      "pageNumber": 596,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 538,
+      "manzilNumber": 7,
+      "text": "وَوَضَعْنَا عَنكَ وِزْرَكَ"
+    },
+    {
+      "id": 6093,
+      "verseKey": "94:3",
+      "verseNumber": 3,
+      "pageNumber": 596,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 538,
+      "manzilNumber": 7,
+      "text": "ٱلَّذِىٓ أَنقَضَ ظَهْرَكَ"
+    },
+    {
+      "id": 6094,
+      "verseKey": "94:4",
+      "verseNumber": 4,
+      "pageNumber": 596,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 538,
+      "manzilNumber": 7,
+      "text": "وَرَفَعْنَا لَكَ ذِكْرَكَ"
+    },
+    {
+      "id": 6095,
+      "verseKey": "94:5",
+      "verseNumber": 5,
+      "pageNumber": 596,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 538,
+      "manzilNumber": 7,
+      "text": "فَإِنَّ مَعَ ٱلْعُسْرِ يُسْرًا"
+    },
+    {
+      "id": 6096,
+      "verseKey": "94:6",
+      "verseNumber": 6,
+      "pageNumber": 596,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 538,
+      "manzilNumber": 7,
+      "text": "إِنَّ مَعَ ٱلْعُسْرِ يُسْرًا"
+    },
+    {
+      "id": 6097,
+      "verseKey": "94:7",
+      "verseNumber": 7,
+      "pageNumber": 596,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 538,
+      "manzilNumber": 7,
+      "text": "فَإِذَا فَرَغْتَ فَٱنصَبْ"
+    },
+    {
+      "id": 6098,
+      "verseKey": "94:8",
+      "verseNumber": 8,
+      "pageNumber": 596,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 239,
+      "rukuNumber": 538,
+      "manzilNumber": 7,
+      "text": "وَإِلَىٰ رَبِّكَ فَٱرْغَب"
+    }
+  ]
+}

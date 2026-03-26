@@ -1,0 +1,116 @@
+{
+  "bundleVersion": "mvp-local-1",
+  "notes": "Offline Quran pages bundled locally for MVP. Extendable to full Mushaf package.",
+  "includedPages": [1, 2, 603, 604],
+  "pages": {
+    "1": {
+      "juz": 1,
+      "sections": [
+        {
+          "surahId": 1,
+          "surahNameAr": "الفاتحة",
+          "ayahs": [
+            { "number": 1, "text": "بسم الله الرحمن الرحيم" },
+            { "number": 2, "text": "الحمد لله رب العالمين" },
+            { "number": 3, "text": "الرحمن الرحيم" },
+            { "number": 4, "text": "مالك يوم الدين" },
+            { "number": 5, "text": "إياك نعبد وإياك نستعين" },
+            { "number": 6, "text": "اهدنا الصراط المستقيم" },
+            { "number": 7, "text": "صراط الذين أنعمت عليهم غير المغضوب عليهم ولا الضالين" }
+          ]
+        }
+      ]
+    },
+    "2": {
+      "juz": 1,
+      "sections": [
+        {
+          "surahId": 2,
+          "surahNameAr": "البقرة",
+          "ayahs": [
+            { "number": 1, "text": "الم" },
+            { "number": 2, "text": "ذلك الكتاب لا ريب فيه هدى للمتقين" },
+            { "number": 3, "text": "الذين يؤمنون بالغيب ويقيمون الصلاة ومما رزقناهم ينفقون" },
+            { "number": 4, "text": "والذين يؤمنون بما أنزل إليك وما أنزل من قبلك وبالآخرة هم يوقنون" },
+            { "number": 5, "text": "أولئك على هدى من ربهم وأولئك هم المفلحون" }
+          ]
+        }
+      ]
+    },
+    "603": {
+      "juz": 30,
+      "sections": [
+        {
+          "surahId": 109,
+          "surahNameAr": "الكافرون",
+          "ayahs": [
+            { "number": 1, "text": "قل يا أيها الكافرون" },
+            { "number": 2, "text": "لا أعبد ما تعبدون" },
+            { "number": 3, "text": "ولا أنتم عابدون ما أعبد" },
+            { "number": 4, "text": "ولا أنا عابد ما عبدتم" },
+            { "number": 5, "text": "ولا أنتم عابدون ما أعبد" },
+            { "number": 6, "text": "لكم دينكم ولي دين" }
+          ]
+        },
+        {
+          "surahId": 110,
+          "surahNameAr": "النصر",
+          "ayahs": [
+            { "number": 1, "text": "إذا جاء نصر الله والفتح" },
+            { "number": 2, "text": "ورأيت الناس يدخلون في دين الله أفواجا" },
+            { "number": 3, "text": "فسبح بحمد ربك واستغفره إنه كان توابا" }
+          ]
+        },
+        {
+          "surahId": 111,
+          "surahNameAr": "المسد",
+          "ayahs": [
+            { "number": 1, "text": "تبت يدا أبي لهب وتب" },
+            { "number": 2, "text": "ما أغنى عنه ماله وما كسب" },
+            { "number": 3, "text": "سيصلى نارا ذات لهب" },
+            { "number": 4, "text": "وامرأته حمالة الحطب" },
+            { "number": 5, "text": "في جيدها حبل من مسد" }
+          ]
+        }
+      ]
+    },
+    "604": {
+      "juz": 30,
+      "sections": [
+        {
+          "surahId": 112,
+          "surahNameAr": "الإخلاص",
+          "ayahs": [
+            { "number": 1, "text": "قل هو الله أحد" },
+            { "number": 2, "text": "الله الصمد" },
+            { "number": 3, "text": "لم يلد ولم يولد" },
+            { "number": 4, "text": "ولم يكن له كفوا أحد" }
+          ]
+        },
+        {
+          "surahId": 113,
+          "surahNameAr": "الفلق",
+          "ayahs": [
+            { "number": 1, "text": "قل أعوذ برب الفلق" },
+            { "number": 2, "text": "من شر ما خلق" },
+            { "number": 3, "text": "ومن شر غاسق إذا وقب" },
+            { "number": 4, "text": "ومن شر النفاثات في العقد" },
+            { "number": 5, "text": "ومن شر حاسد إذا حسد" }
+          ]
+        },
+        {
+          "surahId": 114,
+          "surahNameAr": "الناس",
+          "ayahs": [
+            { "number": 1, "text": "قل أعوذ برب الناس" },
+            { "number": 2, "text": "ملك الناس" },
+            { "number": 3, "text": "إله الناس" },
+            { "number": 4, "text": "من شر الوسواس الخناس" },
+            { "number": 5, "text": "الذي يوسوس في صدور الناس" },
+            { "number": 6, "text": "من الجنة والناس" }
+          ]
+        }
+      ]
+    }
+  }
+}

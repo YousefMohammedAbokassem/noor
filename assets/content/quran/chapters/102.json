@@ -1,0 +1,112 @@
+{
+  "id": 102,
+  "nameAr": "التكاثر",
+  "nameSimple": "At-Takathur",
+  "nameComplex": "At-Takāthur",
+  "translatedName": "The Rivalry in world increase",
+  "translatedNameLanguage": "english",
+  "revelationPlace": "makkah",
+  "revelationOrder": 16,
+  "versesCount": 8,
+  "bismillahPre": true,
+  "startPage": 600,
+  "endPage": 600,
+  "verses": [
+    {
+      "id": 6169,
+      "verseKey": "102:1",
+      "verseNumber": 1,
+      "pageNumber": 600,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 546,
+      "manzilNumber": 7,
+      "text": " أَلْهَىٰكُمُ ٱلتَّكَاثُرُ"
+    },
+    {
+      "id": 6170,
+      "verseKey": "102:2",
+      "verseNumber": 2,
+      "pageNumber": 600,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 546,
+      "manzilNumber": 7,
+      "text": "حَتَّىٰ زُرْتُمُ ٱلْمَقَابِرَ"
+    },
+    {
+      "id": 6171,
+      "verseKey": "102:3",
+      "verseNumber": 3,
+      "pageNumber": 600,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 546,
+      "manzilNumber": 7,
+      "text": "كَلَّا سَوْفَ تَعْلَمُونَ"
+    },
+    {
+      "id": 6172,
+      "verseKey": "102:4",
+      "verseNumber": 4,
+      "pageNumber": 600,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 546,
+      "manzilNumber": 7,
+      "text": "ثُمَّ كَلَّا سَوْفَ تَعْلَمُونَ"
+    },
+    {
+      "id": 6173,
+      "verseKey": "102:5",
+      "verseNumber": 5,
+      "pageNumber": 600,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 546,
+      "manzilNumber": 7,
+      "text": "كَلَّا لَوْ تَعْلَمُونَ عِلْمَ ٱلْيَقِينِ"
+    },
+    {
+      "id": 6174,
+      "verseKey": "102:6",
+      "verseNumber": 6,
+      "pageNumber": 600,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 546,
+      "manzilNumber": 7,
+      "text": "لَتَرَوُنَّ ٱلْجَحِيمَ"
+    },
+    {
+      "id": 6175,
+      "verseKey": "102:7",
+      "verseNumber": 7,
+      "pageNumber": 600,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 546,
+      "manzilNumber": 7,
+      "text": "ثُمَّ لَتَرَوُنَّهَا عَيْنَ ٱلْيَقِينِ"
+    },
+    {
+      "id": 6176,
+      "verseKey": "102:8",
+      "verseNumber": 8,
+      "pageNumber": 600,
+      "juzNumber": 30,
+      "hizbNumber": 60,
+      "rubElHizbNumber": 240,
+      "rukuNumber": 546,
+      "manzilNumber": 7,
+      "text": "ثُمَّ لَتُسْـَٔلُنَّ يَوْمَئِذٍ عَنِ ٱلنَّعِيمِ"
+    }
+  ]
+}
