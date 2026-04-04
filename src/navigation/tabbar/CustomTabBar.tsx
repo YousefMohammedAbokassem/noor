@@ -136,7 +136,18 @@ export const CustomTabBar: React.FC<Props> = ({
           },
         ]}
       >
-        <View style={[styles.topLine, { backgroundColor: tabBarTheme.colors.barTopLine }]} />
+        <View pointerEvents="none" style={[styles.barGlow, { backgroundColor: tabBarTheme.colors.barGlow }]} />
+        <View
+          pointerEvents="none"
+          style={[
+            styles.barInset,
+            {
+              backgroundColor: tabBarTheme.colors.barInset,
+              borderColor: tabBarTheme.colors.barInsetBorder,
+            },
+          ]}
+        />
+        <View pointerEvents="none" style={[styles.topLine, { backgroundColor: tabBarTheme.colors.barTopLine }]} />
         <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <View style={[styles.sideGroup, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             {leftRoutes.map((route) => (
@@ -169,35 +180,54 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     width: '100%',
     overflow: 'visible',
+    paddingHorizontal: 12,
+    paddingBottom: 6,
   },
   bar: {
     width: '100%',
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    borderRadius: 28,
     borderWidth: 1,
-    borderBottomWidth: 0,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    elevation: 14,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 22,
+    elevation: 12,
+  },
+  barGlow: {
+    position: 'absolute',
+    top: -18,
+    left: 24,
+    right: 24,
+    height: 34,
+    borderRadius: 999,
+    opacity: 0.95,
+  },
+  barInset: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: 8,
+    bottom: 8,
+    borderRadius: 22,
+    borderWidth: 1,
   },
   topLine: {
-    height: 1.5,
-    width: '84%',
+    height: 3,
+    width: 62,
     alignSelf: 'center',
-    marginTop: 5,
+    marginTop: 8,
+    marginBottom: 2,
     borderRadius: 999,
-    opacity: 0.62,
+    opacity: 0.52,
   },
   row: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 6,
+    paddingHorizontal: 18,
+    paddingTop: 8,
   },
   sideGroup: {
     flex: 1,
@@ -209,10 +239,10 @@ const styles = StyleSheet.create({
   sideSlot: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 2,
+    paddingHorizontal: 3,
   },
   centerSpacer: {
-    width: tabBarSizes.centerButton + 24,
+    width: tabBarSizes.centerButton + 28,
   },
   centerButtonWrap: {
     position: 'absolute',

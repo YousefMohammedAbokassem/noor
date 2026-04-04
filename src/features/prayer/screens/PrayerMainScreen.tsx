@@ -1,20 +1,23 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
+import { AppNavigationItem } from '@/components/ui/AppNavigationItem';
+import { InlineBackThemeBar } from '@/components/ui/InlineBackThemeBar';
+import { goBackSmart } from '@/navigation/goBackSmart';
 import { usePrayerStore } from '@/state/prayerStore';
 import { usePrayerCountdown } from '@/hooks/usePrayerCountdown';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useAuthStore } from '@/state/authStore';
-import { RootStackParamList } from '@/navigation/types';
 import { PrayerName } from '@/types/models';
 import { getThemeByMode } from '@/theme';
+import { prayerRuntime } from '@/services/prayer/prayerRuntime';
+import { buildManualPrayerTimesSeed } from '@/services/prayer/manualTimes';
 
 const prayerConfig: Array<{ key: PrayerName; icon: keyof typeof Ionicons.glyphMap }> = [
   { key: 'fajr', icon: 'moon-outline' },
@@ -27,21 +30,45 @@ const prayerConfig: Array<{ key: PrayerName; icon: keyof typeof Ionicons.glyphMa
 
 export const PrayerMainScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
   const prayerTimes = usePrayerStore((s) => s.prayerTimes);
   const runtimeHealth = usePrayerStore((s) => s.runtimeHealth);
-  const countdown = usePrayerCountdown(prayerTimes);
   const prayerSettings = useSettingsStore((s) => s.prayerSettings);
   const mode = useSettingsStore((s) => s.readerTheme);
   const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
   const accentColor = isDark ? theme.colors.brand.softGold : theme.colors.brand.darkGreen;
+  const effectivePrayerTimes = prayerTimes;
+  const countdown = usePrayerCountdown(effectivePrayerTimes);
   const nextPrayerLabel = countdown.nextName ? t(`prayer.names.${countdown.nextName}`) : '--';
+  const goBack = () => {
+    goBackSmart(navigation);
+  };
+  const openManualTiming = React.useCallback(() => {
+    if (prayerSettings.timeMode === 'manual') {
+      navigation.navigate('PrayerSettings');
+      return;
+    }
 
-  if (!prayerTimes) {
+    const seededTimes = buildManualPrayerTimesSeed(prayerTimes, prayerSettings.manualPrayerTimes);
+    void (async () => {
+      await prayerRuntime.updatePrayerSettings(
+        {
+          timeMode: 'manual',
+          manualPrayerTimes: seededTimes,
+        },
+        'home_enable_manual_times',
+      );
+      navigation.navigate('PrayerSettings');
+    })();
+  }, [navigation, prayerSettings.manualPrayerTimes, prayerSettings.timeMode, prayerTimes]);
+
+  if (!effectivePrayerTimes) {
     return (
-      <Screen showDecorations={false} contentStyle={styles.content}>
+      <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
+        <InlineBackThemeBar onBack={goBack} />
+
         <AppCard style={styles.emptyCard}>
           <View style={[styles.emptyIconWrap, { backgroundColor: theme.colors.brand.mist }]}>
             <Ionicons name="time-outline" size={34} color={accentColor} />
@@ -59,27 +86,28 @@ export const PrayerMainScreen: React.FC = () => {
 
         <View style={styles.actions}>
           <AppButton title={t('prayer.requestLocation')} onPress={() => navigation.navigate('PrayerLocationRequest')} />
-          <AppButton title={t('prayer.manualCity')} variant="ghost" onPress={() => navigation.navigate('ManualCity')} />
         </View>
       </Screen>
     );
   }
 
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
+      <InlineBackThemeBar onBack={goBack} />
+
       <AppCard style={[styles.heroCard, { backgroundColor: theme.colors.brand.darkGreen, borderColor: theme.colors.brand.green }]}>
         <View style={styles.heroTopRow}>
           <View style={styles.cityInfo}>
             <AppText variant="headingSm" color={theme.colors.neutral.textOnBrand}>
-              {prayerTimes.cityName}
+              {effectivePrayerTimes.cityName}
             </AppText>
             <AppText variant="bodySm" color="#CFE0D5">
               {t('prayer.todayTimes')}
             </AppText>
           </View>
           <View style={styles.dateBadge}>
-            <AppText variant="bodySm" color="#EED79B">
-              {prayerTimes.date}
+            <AppText variant="bodySm" direction="ltr" color="#EED79B">
+              {effectivePrayerTimes.date}
             </AppText>
           </View>
         </View>
@@ -100,7 +128,7 @@ export const PrayerMainScreen: React.FC = () => {
             <AppText variant="label" color="#DCE8E0">
               {t('prayer.remaining')}
             </AppText>
-            <AppText variant="headingSm" color="#F2DA9D">
+            <AppText variant="headingSm" direction="ltr" color="#F2DA9D">
               {countdown.remaining ?? '--:--'}
             </AppText>
           </View>
@@ -110,7 +138,7 @@ export const PrayerMainScreen: React.FC = () => {
       <AppCard style={styles.timesCard}>
         {prayerConfig.map((item) => {
           const isNext = countdown.nextName === item.key;
-          const prayerValue = prayerTimes[item.key] ?? '--:--';
+          const prayerValue = effectivePrayerTimes[item.key] ?? '--:--';
 
           return (
             <View
@@ -139,7 +167,7 @@ export const PrayerMainScreen: React.FC = () => {
                   {t(`prayer.names.${item.key}`)}
                 </AppText>
               </View>
-              <AppText variant="bodyLg" color={isNext ? '#F2DA9D' : undefined}>
+              <AppText variant="bodyLg" direction="ltr" color={isNext ? '#F2DA9D' : undefined}>
                 {prayerValue}
               </AppText>
             </View>
@@ -166,7 +194,22 @@ export const PrayerMainScreen: React.FC = () => {
 
       <View style={styles.actions}>
         <AppButton title={t('prayer.settings')} onPress={() => navigation.navigate('PrayerSettings')} />
-        <AppButton title={t('qibla.title')} variant="ghost" onPress={() => navigation.navigate('Qibla')} />
+        <AppButton
+          title={
+            prayerSettings.timeMode === 'manual'
+              ? t('prayer.editManualTimesAction')
+              : t('prayer.enableManualTimesAction')
+          }
+          onPress={openManualTiming}
+          variant="ghost"
+        />
+        <AppNavigationItem
+          icon="compass-outline"
+          label={t('more.qibla')}
+          hint={t('more.qiblaHint')}
+          onPress={() => navigation.navigate('Qibla')}
+          style={styles.qiblaShortcut}
+        />
       </View>
     </Screen>
   );
@@ -274,5 +317,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: 10,
+  },
+  qiblaShortcut: {
+    marginTop: 2,
   },
 });

@@ -17,10 +17,10 @@ export const LocationFailureScreen: React.FC<Props> = ({ navigation }) => {
   const theme = getThemeByMode(mode);
 
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
       <View style={styles.heroWrap}>
         <View style={[styles.heroCircle, { backgroundColor: theme.colors.neutral.surfaceAlt }]}>
-          <Image source={require('../../../../assets/prayer-failure.png')} style={styles.heroImage} resizeMode="contain" />
+          <Image source={require('../../../../assets/prayer-failure.webp')} style={styles.heroImage} resizeMode="contain" />
         </View>
       </View>
 
@@ -35,7 +35,6 @@ export const LocationFailureScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.actions}>
         <AppButton title={t('common.tryAgain')} onPress={() => navigation.navigate('PrayerLoading')} />
-        <AppButton title={t('prayer.manualCity')} variant="ghost" onPress={() => navigation.navigate('ManualCity')} />
       </View>
     </Screen>
   );

@@ -7,6 +7,8 @@ import { AppText } from '@/components/ui/AppText';
 import { useAuthStore } from '@/state/authStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { getThemeByMode } from '@/theme';
+import { notificationService } from '@/services/notificationService';
+import { locationService } from '@/services/locationService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
@@ -17,26 +19,51 @@ export const SplashScreen: React.FC<Props> = ({ navigation }) => {
   const theme = getThemeByMode(mode);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      let nextRoute: 'Language' | 'MainTabs' | 'Onboarding';
-      if (!auth.isOnboardingDone) {
-        nextRoute = 'Language';
-      } else if (auth.isAuthenticated || auth.isGuest) {
-        nextRoute = 'MainTabs';
-      } else {
-        nextRoute = 'Onboarding';
-      }
+    let cancelled = false;
 
-      navigation.replace(nextRoute);
+    const timer = setTimeout(() => {
+      void (async () => {
+        let nextRoute: 'Language' | 'MainTabs' | 'Onboarding';
+        if (!auth.isOnboardingDone) {
+          nextRoute = 'Language';
+        } else {
+          nextRoute = auth.isAuthenticated || auth.isGuest ? 'MainTabs' : 'Onboarding';
+        }
+
+        try {
+          const [notificationGranted, locationGranted] = await Promise.all([
+            notificationService.getPermissionStatus(),
+            locationService.getPermissionStatus(),
+          ]);
+
+          if (cancelled) {
+            return;
+          }
+
+          if (notificationGranted && locationGranted) {
+            navigation.replace(nextRoute);
+            return;
+          }
+        } catch {
+          // Fall back to the permission gate when permission status cannot be read.
+        }
+
+        if (!cancelled) {
+          navigation.replace('PermissionGate', { nextRoute });
+        }
+      })();
     }, 1200);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [auth.isAuthenticated, auth.isGuest, auth.isOnboardingDone, navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.brand.darkGreen }]}>
       <View style={[styles.glow, { backgroundColor: theme.colors.brand.softGold }]} />
-      <Image source={require('../../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+      <Image source={require('../../../../assets/logo-mark.webp')} style={styles.logo} resizeMode="contain" />
       <AppText variant="headingMd" color={theme.colors.neutral.textOnBrand}>
         {t('appName')}
       </AppText>
@@ -55,8 +82,8 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   logo: {
-    width: 84,
-    height: 84,
+    width: 132,
+    height: 132,
   },
   glow: {
     position: 'absolute',

@@ -100,6 +100,18 @@ const buildRequestId = () => {
   return `req-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 };
 
+export class ApiClientError extends Error {
+  code?: string;
+  status?: number;
+
+  constructor(message: string, options?: { code?: string; status?: number }) {
+    super(message);
+    this.name = 'ApiClientError';
+    this.code = options?.code;
+    this.status = options?.status;
+  }
+}
+
 const sanitizeApiErrorMessage = (error: AxiosError<{ code?: string; message?: string }>) => {
   const status = error.response?.status;
   const apiMessage = error.response?.data?.message;
@@ -206,6 +218,11 @@ apiClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(new Error(sanitizeApiErrorMessage(error)));
+    return Promise.reject(
+      new ApiClientError(sanitizeApiErrorMessage(error), {
+        code: error.response?.data?.code,
+        status: error.response?.status,
+      }),
+    );
   },
 );

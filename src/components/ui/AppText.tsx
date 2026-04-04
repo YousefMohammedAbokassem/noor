@@ -10,14 +10,16 @@ type Variant = 'headingLg' | 'headingMd' | 'headingSm' | 'bodyLg' | 'bodyMd' | '
 type Props = TextProps & {
   variant?: Variant;
   color?: string;
+  direction?: 'locale' | 'ltr' | 'rtl';
 };
 
-export const AppText: React.FC<Props> = ({ variant = 'bodyMd', color, style, ...props }) => {
+export const AppText: React.FC<Props> = ({ variant = 'bodyMd', color, style, direction = 'locale', ...props }) => {
   const mode = useSettingsStore((s) => s.readerTheme);
   const language = useAuthStore((s) => s.language);
   const numberFormat = useAuthStore((s) => s.numberFormat);
   const theme = getThemeByMode(mode);
   const isRTL = language === 'ar';
+  const resolvedDirection = direction === 'locale' ? (isRTL ? 'rtl' : 'ltr') : direction;
   const normalizeDigits = (value: string) => {
     if (numberFormat === 'arabic') return toArabicDigits(value);
     if (numberFormat === 'english') return toEnglishDigits(value);
@@ -38,8 +40,8 @@ export const AppText: React.FC<Props> = ({ variant = 'bodyMd', color, style, ...
         theme.typography[variant],
         {
           color: color ?? theme.colors.neutral.textPrimary,
-          textAlign: isRTL ? 'right' : 'left',
-          writingDirection: isRTL ? 'rtl' : 'ltr',
+          textAlign: resolvedDirection === 'rtl' ? 'right' : 'left',
+          writingDirection: resolvedDirection,
         },
         style,
       ]}

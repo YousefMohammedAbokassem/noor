@@ -2,14 +2,14 @@ import React, { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppInput } from '@/components/ui/AppInput';
 import { AppButton } from '@/components/ui/AppButton';
-import { RootStackParamList } from '@/navigation/types';
+import { InlineBackThemeBar } from '@/components/ui/InlineBackThemeBar';
+import { goBackSmart } from '@/navigation/goBackSmart';
 import { surahList } from '@/constants/quran';
 import { useKhatmaStore } from '@/state/khatmaStore';
 import { useQuranUiStore } from '@/state/quranUiStore';
@@ -20,7 +20,7 @@ import { useResetFlatListOnFocus } from '@/features/quran/hooks/useResetFlatList
 
 export const QuranHomeScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
   const reading = useKhatmaStore((s) => s.readingProgress);
   const pinnedMarker = useKhatmaStore((s) => s.pinnedMarker);
   const language = useAuthStore((s) => s.language);
@@ -49,8 +49,14 @@ export const QuranHomeScreen: React.FC = () => {
     surahList.find((item) => item.id === reading.currentSurah) ??
     surahList[0];
 
+  const goBack = () => {
+    goBackSmart(navigation);
+  };
+
   return (
-    <Screen scroll={false} showDecorations={false} showThemeToggle contentStyle={styles.screen}>
+    <Screen scroll={false} showDecorations={false} showThemeToggle={false} contentStyle={styles.screen}>
+      <InlineBackThemeBar onBack={goBack} />
+
       <AppCard style={[styles.heroCard, { backgroundColor: theme.colors.brand.darkGreen, borderColor: theme.colors.brand.green }]}>
         <View style={styles.heroHeaderRow}>
           <View style={styles.heroIconWrap}>

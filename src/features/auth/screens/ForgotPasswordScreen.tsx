@@ -12,9 +12,9 @@ import { getThemeByMode } from '@/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 
-export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
+export const ForgotPasswordScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(route.params?.email ?? '');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -29,6 +29,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     try {
       await authApi.forgotPassword(email);
       setSuccess(t('auth.resetSent'));
+      navigation.replace('ResetPassword', { email: email.trim().toLowerCase() });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -37,10 +38,17 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <Screen>
+    <Screen showDecorations={false} showThemeToggle={false}>
       <AppText variant="bodyMd">{t('auth.forgotHint')}</AppText>
 
-      <AppInput label={t('auth.email')} value={email} onChangeText={setEmail} keyboardType="email-address" />
+      <AppInput
+        label={t('auth.email')}
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
       {!!error && <AppText color={theme.colors.neutral.danger}>{error}</AppText>}
       {!!success && <AppText color={theme.colors.neutral.success}>{success}</AppText>}
 

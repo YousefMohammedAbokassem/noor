@@ -1,6 +1,6 @@
 // Build-time only script to generate local Quran JSON bundles.
 // It must never be imported or executed by the mobile app runtime.
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +14,6 @@ const ITEMS_PER_REQUEST = 50;
 const TOTAL_PAGES = 604;
 
 const outputDir = path.resolve(__dirname, '../assets/content/quran');
-const chaptersDir = path.join(outputDir, 'chapters');
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -122,6 +121,58 @@ const buildPageBundle = (chapters) => {
   return pages;
 };
 
+const buildCompactChaptersBundle = (chapters) => ({
+  chapters: chapters.map((chapter) => [
+    chapter.id,
+    chapter.nameAr,
+    chapter.nameSimple,
+    chapter.nameComplex,
+    chapter.translatedName,
+    chapter.translatedNameLanguage,
+    chapter.revelationPlace,
+    chapter.revelationOrder,
+    chapter.versesCount,
+    chapter.bismillahPre ? 1 : 0,
+    chapter.startPage,
+    chapter.endPage,
+    chapter.verses.map((verse) => [
+      verse.id,
+      verse.verseKey,
+      verse.verseNumber,
+      verse.pageNumber,
+      verse.juzNumber,
+      verse.hizbNumber,
+      verse.rubElHizbNumber,
+      verse.rukuNumber,
+      verse.manzilNumber,
+      verse.text,
+    ]),
+  ]),
+  stats: [
+    chapters.length,
+    chapters.reduce((sum, chapter) => sum + chapter.verses.length, 0),
+    FETCHED_AT,
+    'quran-foundation-api',
+  ],
+});
+
+const buildCompactPagesBundle = (pages, totalVerses) => ({
+  pages: pages.map((page) => [
+    page.pageNumber,
+    page.juzNumber,
+    page.hizbNumber,
+    page.rubElHizbNumber,
+    page.manzilNumber,
+    page.sections.map((section) => [
+      section.chapterId,
+      section.chapterNameAr,
+      section.chapterNameSimple,
+      section.verses.map((verse) => [verse.id, verse.verseKey, verse.number, verse.text]),
+    ]),
+  ]),
+  stats: [TOTAL_PAGES, totalVerses],
+});
+
 const buildJuzIndex = (pages) => {
   const juzMap = new Map();
 
@@ -195,9 +246,6 @@ const main = async () => {
   const chapterSummaries = chapterResponse.chapters.map(toChapterSummary);
 
   await mkdir(outputDir, { recursive: true });
-  await rm(chaptersDir, { recursive: true, force: true });
-  await mkdir(chaptersDir, { recursive: true });
-
   const chapters = [];
 
   for (const chapter of chapterSummaries) {
@@ -209,14 +257,11 @@ const main = async () => {
     };
 
     chapters.push(chapterPayload);
-    await writeJson(
-      path.join(chaptersDir, `${String(chapter.id).padStart(3, '0')}.json`),
-      chapterPayload,
-    );
   }
 
   const pages = buildPageBundle(chapters);
   const juzs = buildJuzIndex(pages);
+  const totalVerses = chapters.reduce((sum, chapter) => sum + chapter.verses.length, 0);
 
   const source = {
     provider: 'Quran Foundation',
@@ -235,23 +280,9 @@ const main = async () => {
 
   await writeJson(path.join(outputDir, 'source.json'), source);
   await writeJson(path.join(outputDir, 'chapters.index.json'), { chapters: chapterSummaries });
-  await writeJson(path.join(outputDir, 'chapters.bundle.json'), {
-    chapters,
-    stats: {
-      totalChapters: chapters.length,
-      totalVerses: chapters.reduce((sum, chapter) => sum + chapter.verses.length, 0),
-      generatedAt: FETCHED_AT,
-      source: 'quran-foundation-api',
-    },
-  });
+  await writeJson(path.join(outputDir, 'chapters.compact.json'), buildCompactChaptersBundle(chapters));
   await writeJson(path.join(outputDir, 'juzs.index.json'), { juzs });
-  await writeJson(path.join(outputDir, 'pages.bundle.json'), {
-    pages,
-    stats: {
-      totalPages: TOTAL_PAGES,
-      totalVerses: chapters.reduce((sum, chapter) => sum + chapter.verses.length, 0),
-    },
-  });
+  await writeJson(path.join(outputDir, 'pages.compact.json'), buildCompactPagesBundle(pages, totalVerses));
 
   console.log('Quran data sync completed successfully.');
 };

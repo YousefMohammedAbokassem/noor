@@ -1,24 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
   FlatList,
-  PanResponder,
-  Platform,
   Pressable,
-  Share,
   StyleSheet,
   Text,
-  ToastAndroid,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/navigation/types';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
+import { useAppAlert } from '@/components/ui/AppAlertProvider';
 import { juzList, surahList, TOTAL_QURAN_PAGES } from '@/constants/quran';
 import { useKhatmaStore } from '@/state/khatmaStore';
 import { useSettingsStore } from '@/state/settingsStore';
@@ -26,8 +20,6 @@ import { useAuthStore } from '@/state/authStore';
 import { getLocalQuranPage } from '@/data/quran';
 import { getThemeByMode } from '@/theme';
 import { toArabicDigits, toEnglishDigits } from '@/utils/number';
-import { VerseTafsirPanel } from '@/features/quran/components/VerseTafsirPanel';
-import { getVerseTafsir, type VerseTafsirData } from '@/features/quran/services/tafsir';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeTransition } from '@/components/theme/ThemeTransitionProvider';
 
@@ -43,13 +35,7 @@ type ReaderVerse = {
   text: string;
 };
 
-type SelectedVerse = ReaderVerse & {
-  pageNumber: number;
-};
-
 const allMushafPages = Array.from({ length: TOTAL_QURAN_PAGES }, (_, i) => i + 1);
-const TAFSIR_SHEET_HIDDEN_OFFSET = 900;
-const TAFSIR_SHEET_CLOSE_THRESHOLD = 120;
 
 const buildPageRange = (startPage: number, endPage: number) => {
   const start = Math.max(1, Math.min(startPage, endPage));
@@ -61,6 +47,7 @@ const shouldRenderBasmala = (surahId: number) => surahId !== 9;
 
 export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
+  const { showToast } = useAppAlert();
   const insets = useSafeAreaInsets();
   const language = useAuthStore((s) => s.language);
   const numberFormat = useAuthStore((s) => s.numberFormat);
@@ -131,53 +118,9 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [selectedVerse, setSelectedVerse] = useState<SelectedVerse | null>(null);
-  const [isTafsirPanelOpen, setIsTafsirPanelOpen] = useState(false);
-  const [currentTafsir, setCurrentTafsir] = useState<VerseTafsirData | null>(null);
   const currentPageRef = useRef(initialPage);
   const listRef = useRef<FlatList<number>>(null);
   const viewabilityConfigRef = useRef({ itemVisiblePercentThreshold: 55 });
-  const panelTranslateY = useRef(new Animated.Value(TAFSIR_SHEET_HIDDEN_OFFSET)).current;
-  const panelOpacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!selectedVerse || !currentTafsir) return;
-
-    if (isTafsirPanelOpen) {
-      Animated.parallel([
-        Animated.timing(panelTranslateY, {
-          toValue: 0,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.timing(panelOpacity, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      return;
-    }
-
-    Animated.parallel([
-      Animated.timing(panelTranslateY, {
-        toValue: TAFSIR_SHEET_HIDDEN_OFFSET,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(panelOpacity, {
-        toValue: 0,
-        duration: 160,
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      if (finished && !isTafsirPanelOpen) {
-        setSelectedVerse(null);
-        setCurrentTafsir(null);
-      }
-    });
-  }, [currentTafsir, isTafsirPanelOpen, panelOpacity, panelTranslateY, selectedVerse]);
 
   const applyPageAsCurrent = useCallback(
     (pageNumber: number) => {
@@ -219,13 +162,8 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const showNoPinnedPageFeedback = useCallback(() => {
     const message = t('quran.noPinnedPageMessage');
-    if (Platform.OS === 'android') {
-      ToastAndroid.show(message, ToastAndroid.SHORT);
-      return;
-    }
-
-    Alert.alert(t('quran.noPinnedPageTitle'), message);
-  }, [t]);
+    showToast(message, { title: t('quran.noPinnedPageTitle') });
+  }, [showToast, t]);
 
   const goToPinnedPage = () => {
     if (!pinnedPageInRange) {
@@ -275,147 +213,11 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
     return language === 'ar' ? toArabicDigits(raw) : toEnglishDigits(raw);
   };
 
-  const localizeSurahName = useCallback(
-    (verse: Pick<ReaderVerse, 'surahNameAr' | 'surahNameEn'>) =>
-      language === 'ar' ? verse.surahNameAr : verse.surahNameEn,
-    [language],
-  );
-
-  const showInlineFeedback = useCallback(
-    (message: string, title?: string) => {
-      if (Platform.OS === 'android') {
-        ToastAndroid.show(message, ToastAndroid.SHORT);
-        return;
-      }
-
-      Alert.alert(title ?? t('quran.reader'), message);
-    },
-    [t],
-  );
-
-  const buildFallbackTafsir = useCallback(
-    (verse: SelectedVerse): VerseTafsirData => ({
-      source: t('quran.tafsirFallbackSource'),
-      title: t('quran.tafsirFallbackTitle'),
-      text: t('quran.tafsirFallbackBody', {
-        surah: localizeSurahName(verse),
-        ayah: localizeVerseNumber(verse.number),
-      }),
-    }),
-    [localizeSurahName, t, numberFormat, language],
-  );
-
-  const closeTafsirPanel = useCallback(() => {
-    if (!isTafsirPanelOpen && !selectedVerse) return;
-
-    setIsTafsirPanelOpen(false);
-  }, [isTafsirPanelOpen, selectedVerse]);
-
-  const restoreTafsirPanelPosition = useCallback(() => {
-    Animated.parallel([
-      Animated.spring(panelTranslateY, {
-        toValue: 0,
-        damping: 18,
-        stiffness: 220,
-        mass: 0.9,
-        useNativeDriver: true,
-      }),
-      Animated.timing(panelOpacity, {
-        toValue: 1,
-        duration: 160,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [panelOpacity, panelTranslateY]);
-
-  const panelPanResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (event, gestureState) =>
-          isTafsirPanelOpen &&
-          event.nativeEvent.locationY < 72 &&
-          gestureState.dy > 6 &&
-          Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
-        onPanResponderMove: (_, gestureState) => {
-          const nextTranslateY = Math.max(0, gestureState.dy);
-          panelTranslateY.setValue(nextTranslateY);
-          panelOpacity.setValue(Math.max(0.4, 1 - nextTranslateY / TAFSIR_SHEET_HIDDEN_OFFSET));
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          if (
-            gestureState.dy > TAFSIR_SHEET_CLOSE_THRESHOLD ||
-            gestureState.vy > 1.1
-          ) {
-            closeTafsirPanel();
-            return;
-          }
-
-          restoreTafsirPanelPosition();
-        },
-        onPanResponderTerminate: () => {
-          restoreTafsirPanelPosition();
-        },
-      }),
-    [closeTafsirPanel, isTafsirPanelOpen, panelOpacity, panelTranslateY, restoreTafsirPanelPosition],
-  );
-
-  const handleVersePress = useCallback(
-    (verse: ReaderVerse, pageNumber: number) => {
-      const nextSelectedVerse: SelectedVerse = {
-        ...verse,
-        pageNumber,
-      };
-
-      const isSameVerse =
-        selectedVerse?.pageNumber === nextSelectedVerse.pageNumber &&
-        selectedVerse?.verseKey === nextSelectedVerse.verseKey;
-
-      if (isSameVerse && isTafsirPanelOpen) {
-        setIsTafsirPanelOpen(false);
-        return;
-      }
-
-      setSelectedVerse(nextSelectedVerse);
-      setCurrentTafsir(getVerseTafsir(nextSelectedVerse.surahId, nextSelectedVerse.number) ?? buildFallbackTafsir(nextSelectedVerse));
-      setIsTafsirPanelOpen(true);
-    },
-    [buildFallbackTafsir, isTafsirPanelOpen, selectedVerse],
-  );
-
-  const buildTafsirShareMessage = useCallback(
-    (verse: SelectedVerse, tafsir: VerseTafsirData) =>
-      [
-        verse.text,
-        `${t('quran.surah')} ${localizeSurahName(verse)} • ${t('quran.verseLabel')} ${localizeVerseNumber(verse.number)}`,
-        `${t('quran.tafsirTitle')} - ${tafsir.title}`,
-        tafsir.text,
-      ].join('\n\n'),
-    [localizeSurahName, t, numberFormat, language],
-  );
-
-  const shareCurrentVerseTafsir = useCallback(async () => {
-    if (!selectedVerse || !currentTafsir) return;
-
-    try {
-      await Share.share({
-        message: buildTafsirShareMessage(selectedVerse, currentTafsir),
-      });
-    } catch {
-      showInlineFeedback(t('quran.shareFailed'));
-    }
-  }, [buildTafsirShareMessage, currentTafsir, selectedVerse, showInlineFeedback, t]);
-
-  const copyCurrentVerseTafsir = useCallback(async () => {
-    if (!selectedVerse || !currentTafsir) return;
-
-    await Clipboard.setStringAsync(buildTafsirShareMessage(selectedVerse, currentTafsir));
-    showInlineFeedback(t('quran.copiedVerseTafsir'));
-  }, [buildTafsirShareMessage, currentTafsir, selectedVerse, showInlineFeedback, t]);
-
   return (
     <Screen
       scroll={false}
       showDecorations={false}
+      showThemeToggle={false}
       contentStyle={{
         paddingHorizontal: 0,
         paddingVertical: 0,
@@ -438,22 +240,6 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
           ]}
         >
           <View style={styles.headerSide}>
-            <Pressable onPress={goBack} style={styles.iconButton}>
-              <Ionicons
-                name={isRTL ? 'arrow-forward' : 'arrow-back'}
-                size={22}
-                color={accentColor}
-              />
-            </Pressable>
-          </View>
-
-          <View style={styles.headerCenter} pointerEvents="none">
-            <AppText variant="headingSm" numberOfLines={1} style={styles.headerTitle}>
-              {headerTitle}
-            </AppText>
-          </View>
-
-          <View style={styles.headerSide}>
             <Pressable
               onPress={(event) => toggleTheme(event.nativeEvent.pageX, event.nativeEvent.pageY)}
               style={[
@@ -469,6 +255,22 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
                 name={isDark ? 'moon' : 'sunny'}
                 size={18}
                 color={isDark ? theme.colors.brand.softGold : theme.colors.brand.darkGreen}
+              />
+            </Pressable>
+          </View>
+
+          <View style={styles.headerCenter} pointerEvents="none">
+            <AppText variant="headingSm" numberOfLines={1} style={styles.headerTitle}>
+              {headerTitle}
+            </AppText>
+          </View>
+
+          <View style={styles.headerSide}>
+            <Pressable onPress={goBack} style={styles.iconButton}>
+              <Ionicons
+                name={isRTL ? 'arrow-forward' : 'arrow-back'}
+                size={22}
+                color={accentColor}
               />
             </Pressable>
           </View>
@@ -512,8 +314,8 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
         data={readerPages}
         keyExtractor={(item) => String(item)}
         initialScrollIndex={readerPages.indexOf(initialPage)}
-        extraData={`${selectedVerse?.verseKey ?? 'none'}-${selectedVerse?.pageNumber ?? 0}-${isTafsirPanelOpen ? 'open' : 'closed'}-${readerTheme}-${language}-${numberFormat}`}
-        scrollEnabled={!isTafsirPanelOpen}
+        extraData={`${readerTheme}-${language}-${numberFormat}`}
+        scrollEnabled
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.listContent,
@@ -551,8 +353,6 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
           const firstVerse = allVerses[0]?.number ?? 1;
           const markerIsActive = pinnedMarker?.page === pageNumber;
           const isOpeningOfSelectedSurah = !!selectedSurah && pageNumber === selectedSurah.startPage;
-          const selectedVerseOnPage =
-            isTafsirPanelOpen && selectedVerse?.pageNumber === pageNumber ? selectedVerse : null;
           const revelationLabel = selectedSurah?.revelationPlace === 'madinah'
             ? t('quran.revelationMadinah')
             : t('quran.revelationMakkah');
@@ -660,51 +460,24 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
                         color: theme.colors.neutral.textPrimary,
                       },
                     ]}
-                  >
-                    {allVerses.map((ayah, index) => {
-                      const isSelected = selectedVerseOnPage?.verseKey === ayah.verseKey;
-
-                      return (
-                        <Text
-                          key={`${pageNumber}-${ayah.verseKey}-${index}`}
-                          onPress={() => handleVersePress(ayah, pageNumber)}
-                          suppressHighlighting
-                          style={
-                            isSelected
-                              ? [
-                                  styles.verseTextSelected,
-                                  {
-                                    borderColor: isDark
-                                      ? 'rgba(231, 206, 134, 0.44)'
-                                      : 'rgba(18, 55, 42, 0.2)',
-                                    backgroundColor: isDark
-                                      ? 'rgba(231, 206, 134, 0.14)'
-                                      : 'rgba(18, 55, 42, 0.08)',
-                                    color: isDark ? theme.colors.neutral.textPrimary : theme.colors.brand.darkGreen,
-                                  },
-                                ]
-                              : undefined
-                          }
-                        >
-                          {ayah.text}
-                          <Text
-                            style={[
-                              styles.verseOrnament,
-                              {
-                                color: isSelected
-                                  ? isDark
-                                    ? theme.colors.brand.softGold
-                                    : theme.colors.brand.green
-                                  : accentColor,
-                              },
-                              isSelected ? styles.verseOrnamentSelected : undefined,
-                            ]}
-                          >
-                            {` ﴿${localizeVerseNumber(ayah.number)}﴾`}
+                    >
+                      {allVerses.map((ayah, index) => {
+                        return (
+                          <Text key={`${pageNumber}-${ayah.verseKey}-${index}`}>
+                            {ayah.text}
+                            <Text
+                              style={[
+                                styles.verseOrnament,
+                                {
+                                  color: accentColor,
+                                },
+                              ]}
+                            >
+                              {` ﴿${localizeVerseNumber(ayah.number)}﴾`}
+                            </Text>
+                            {index < allVerses.length - 1 ? ' ' : ''}
                           </Text>
-                          {index < allVerses.length - 1 ? ' ' : ''}
-                        </Text>
-                      );
+                        );
                     })}
                   </Text>
                 </View>
@@ -718,53 +491,6 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
         }}
       />
 
-      {selectedVerse && currentTafsir ? (
-        <>
-          <Animated.View
-            pointerEvents={isTafsirPanelOpen ? 'auto' : 'none'}
-            style={[
-              styles.sheetBackdrop,
-              {
-                opacity: panelOpacity.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 0.22],
-                }),
-              },
-            ]}
-          >
-            <Pressable onPress={closeTafsirPanel} style={StyleSheet.absoluteFillObject} />
-          </Animated.View>
-
-          <Animated.View
-            pointerEvents={isTafsirPanelOpen ? 'auto' : 'none'}
-            {...panelPanResponder.panHandlers}
-            style={[
-              styles.bottomPanelWrap,
-              {
-                top: insets.top + 84,
-                bottom: Math.max(insets.bottom, 8) + 8,
-                opacity: panelOpacity,
-                transform: [{ translateY: panelTranslateY }],
-              },
-            ]}
-          >
-            <VerseTafsirPanel
-              accentColor={accentColor}
-              copyLabel={t('quran.copyVerseTafsir')}
-              isDark={isDark}
-              isRTL={isRTL}
-              onClose={closeTafsirPanel}
-              onCopy={copyCurrentVerseTafsir}
-              onShare={shareCurrentVerseTafsir}
-              shareLabel={t('quran.shareVerseTafsir')}
-              surahName={localizeSurahName(selectedVerse)}
-              tafsir={currentTafsir}
-              theme={theme}
-              verseBadgeLabel={t('quran.verseBadge', { number: selectedVerse.number })}
-            />
-          </Animated.View>
-        </>
-      ) : null}
     </Screen>
   );
 };
@@ -944,27 +670,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0,
   },
-  verseTextSelected: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  verseOrnamentSelected: {
-    fontWeight: '800',
-  },
   emptyPageText: {
     textAlign: 'center',
     paddingVertical: 12,
-  },
-  bottomPanelWrap: {
-    position: 'absolute',
-    left: 8,
-    right: 8,
-    bottom: 0,
-  },
-  sheetBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000000',
   },
 });

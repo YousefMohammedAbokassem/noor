@@ -23,3 +23,20 @@ export const clearAccountScopedData = async () => {
     // Best effort cleanup only.
   }
 };
+
+export const clearInstallScopedData = async () => {
+  await secureSession.clearTokens();
+  useAuthStore.getState().resetPersistentState();
+  useKhatmaStore.getState().resetAccountScopedData();
+  useSettingsStore.getState().resetAccountScopedData();
+  usePrayerStore.getState().resetAccountScopedData();
+  await prayerTimesRepository.clearAll();
+  await storage.removeItem(NOTIFICATION_STATE_KEY);
+
+  try {
+    const { notificationService } = await import('@/services/notificationService');
+    await notificationService.clearAccountScopedNotifications();
+  } catch {
+    // Best effort cleanup only.
+  }
+};

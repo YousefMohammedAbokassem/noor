@@ -9,6 +9,7 @@ import {
 import { PrayerDaySchedule, PrayerName, PrayerSettings, PrayerTimes } from '@/types/models';
 import {
   buildCalendarDate,
+  combineDateAndTimeInZone,
   formatTimeInTimeZone,
   getDeviceTimeZone,
   getOffsetMinutes,
@@ -107,6 +108,14 @@ class PrayerTimeService {
       acc[prayer] = formatTimeInTimeZone(new Date(timestamps[prayer]), timeZone);
       return acc;
     }, {} as Record<PrayerName, string>);
+
+    if (settings.timeMode === 'manual') {
+      for (const prayer of ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const) {
+        const manualTime = settings.manualPrayerTimes[prayer];
+        times[prayer] = manualTime;
+        timestamps[prayer] = combineDateAndTimeInZone(dateKey, manualTime, timeZone).toISOString();
+      }
+    }
 
     return {
       date: dateKey,

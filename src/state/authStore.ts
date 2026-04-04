@@ -16,23 +16,29 @@ export type AuthStore = {
   login: (user: User) => void;
   continueAsGuest: () => void;
   logout: () => void;
+  resetPersistentState: () => void;
+};
+
+const initialAuthState = {
+  user: null,
+  isAuthenticated: false,
+  isGuest: false,
+  isOnboardingDone: false,
+  language: 'ar' as Language,
+  numberFormat: 'arabic' as NumberFormat,
 };
 
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
-      user: null,
-      isAuthenticated: false,
-      isGuest: false,
-      isOnboardingDone: false,
-      language: 'ar',
-      numberFormat: 'arabic',
+      ...initialAuthState,
       setLanguage: (language) => set({ language }),
       setNumberFormat: (numberFormat) => set({ numberFormat }),
       completeOnboarding: () => set({ isOnboardingDone: true }),
       login: (user) => set({ user, isAuthenticated: true, isGuest: false, isOnboardingDone: true }),
       continueAsGuest: () => set({ user: null, isAuthenticated: false, isGuest: true, isOnboardingDone: true }),
       logout: () => set({ user: null, isAuthenticated: false, isGuest: false }),
+      resetPersistentState: () => set(initialAuthState),
     }),
     {
       name: storage.keys.authStore,

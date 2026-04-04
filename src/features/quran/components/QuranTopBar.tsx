@@ -24,6 +24,17 @@ export const QuranTopBar: React.FC<Props> = ({ title, subtitle, onBack, rightSlo
 
   return (
     <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+      <View style={styles.rightSlot}>{rightSlot}</View>
+
+      <View style={styles.textWrap}>
+        <AppText variant="headingSm">{title}</AppText>
+        {!!subtitle && (
+          <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
+            {subtitle}
+          </AppText>
+        )}
+      </View>
+
       <Pressable
         onPress={onBack}
         style={({ pressed }) => [
@@ -44,17 +55,6 @@ export const QuranTopBar: React.FC<Props> = ({ title, subtitle, onBack, rightSlo
           {t('common.back')}
         </AppText>
       </Pressable>
-
-      <View style={styles.textWrap}>
-        <AppText variant="headingSm">{title}</AppText>
-        {!!subtitle && (
-          <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
-            {subtitle}
-          </AppText>
-        )}
-      </View>
-
-      <View style={styles.rightSlot}>{rightSlot}</View>
     </View>
   );
 };

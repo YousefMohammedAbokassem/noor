@@ -7,7 +7,23 @@ import { prayerLogger } from '@/services/prayer/logger';
 import { PRAYER_REPAIR_TASK_NAME } from '@/background/prayerRepairTask';
 import { PrayerSettings } from '@/types/models';
 
-const BACKGROUND_INTERVAL_MINUTES = 12 * 60;
+const BACKGROUND_INTERVAL_MINUTES = 15;
+const locationRefreshPatchKeys: Array<keyof PrayerSettings> = [
+  'locationMode',
+  'city',
+  'country',
+  'countryCode',
+  'latitude',
+  'longitude',
+  'timeZone',
+  'locationLabel',
+  'locationSource',
+  'locationUpdatedAt',
+  'presetCityId',
+];
+
+const shouldAllowLocationRefreshForPatch = (patch: Partial<PrayerSettings>) =>
+  locationRefreshPatchKeys.some((key) => key in patch) && patch.locationMode !== 'manual';
 
 class PrayerRuntime {
   private initialized = false;
@@ -68,7 +84,7 @@ class PrayerRuntime {
   async updatePrayerSettings(patch: Partial<PrayerSettings>, reason = 'settings_changed') {
     settingsRepository.savePrayerSettings(patch);
     return scheduleRepairService.requestRepair(reason, {
-      allowLocationRefresh: patch.locationMode !== 'manual',
+      allowLocationRefresh: shouldAllowLocationRefreshForPatch(patch),
       forceNotificationResync: true,
     });
   }

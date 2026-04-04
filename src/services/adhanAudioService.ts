@@ -1,15 +1,20 @@
-import { Audio } from 'expo-av';
+import { AudioPlayer, AudioStatus, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { getAdhanVoiceById } from '@/constants/adhan';
 import { AdhanVoiceId } from '@/types/models';
 
 type PlaybackOptions = {
   durationMs?: number;
   onStop?: () => void;
+  backgroundPlayback?: boolean;
+  lockScreenTitle?: string;
 };
 
-let currentSound: Audio.Sound | null = null;
 let stopTimer: ReturnType<typeof setTimeout> | null = null;
 let currentOnStop: (() => void) | null = null;
+let currentPlayer: AudioPlayer | null = null;
+let playbackSubscription: { remove: () => void } | null = null;
+
+const buildLockScreenTitle = (lockScreenTitle?: string) => lockScreenTitle ?? 'Adhan';
 
 const clearStopTimer = () => {
   if (!stopTimer) return;
@@ -17,57 +22,98 @@ const clearStopTimer = () => {
   stopTimer = null;
 };
 
+const clearPlaybackSubscription = () => {
+  playbackSubscription?.remove();
+  playbackSubscription = null;
+};
+
+const getPlayer = () => {
+  if (!currentPlayer) {
+    currentPlayer = createAudioPlayer(null, {
+      updateInterval: 250,
+      keepAudioSessionActive: true,
+    });
+  }
+
+  return currentPlayer;
+};
+
+const stopPlayer = async () => {
+  if (!currentPlayer) return;
+
+  try {
+    currentPlayer.pause();
+  } catch {
+    // no-op
+  }
+
+  try {
+    await currentPlayer.seekTo(0);
+  } catch {
+    // no-op
+  }
+
+  try {
+    currentPlayer.clearLockScreenControls();
+  } catch {
+    // no-op
+  }
+};
+
 const stopCurrent = async () => {
   clearStopTimer();
-  if (!currentSound) return;
-  const sound = currentSound;
   const onStop = currentOnStop;
-  currentSound = null;
   currentOnStop = null;
-  try {
-    await sound.stopAsync();
-  } catch {
-    // no-op
-  }
-  try {
-    await sound.unloadAsync();
-  } catch {
-    // no-op
-  }
+  await stopPlayer();
   onStop?.();
 };
 
+const bindPlaybackLifecycle = (player: AudioPlayer) => {
+  clearPlaybackSubscription();
+  playbackSubscription = player.addListener('playbackStatusUpdate', (status: AudioStatus) => {
+    if (!status.didJustFinish) return;
+    void stopCurrent();
+  });
+};
+
 const play = async (voiceId: AdhanVoiceId, options: PlaybackOptions = {}) => {
-  const { durationMs = 12000, onStop } = options;
+  const { durationMs, onStop, backgroundPlayback = true, lockScreenTitle } = options;
   const voice = getAdhanVoiceById(voiceId);
 
   try {
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      allowsRecordingIOS: false,
-      staysActiveInBackground: false,
-      shouldDuckAndroid: true,
-      playThroughEarpieceAndroid: false,
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      allowsRecording: false,
+      shouldPlayInBackground: backgroundPlayback,
+      shouldRouteThroughEarpiece: false,
+      interruptionMode: 'doNotMix',
     });
 
     await stopCurrent();
-    const result = await Audio.Sound.createAsync(voice.source, {
-      shouldPlay: true,
-      isLooping: false,
-      volume: 1,
-      progressUpdateIntervalMillis: 250,
-    });
-    currentSound = result.sound;
+    const player = getPlayer();
+    bindPlaybackLifecycle(player);
+    player.replace(voice.source);
+    player.loop = false;
+    player.volume = 1;
     currentOnStop = onStop ?? null;
 
-    stopTimer = setTimeout(() => {
-      void stopCurrent();
-    }, durationMs);
+    if (backgroundPlayback) {
+      player.setActiveForLockScreen(true, {
+        title: buildLockScreenTitle(lockScreenTitle),
+        artist: voice.labelAr,
+        albumTitle: 'Noor Al-Hayah',
+      });
+    } else {
+      player.clearLockScreenControls();
+    }
 
-    result.sound.setOnPlaybackStatusUpdate((status) => {
-      if (!status.isLoaded || !status.didJustFinish) return;
-      void stopCurrent();
-    });
+    player.play();
+
+    if (typeof durationMs === 'number' && durationMs > 0) {
+      stopTimer = setTimeout(() => {
+        void stopCurrent();
+      }, durationMs);
+    }
 
     return true;
   } catch {
@@ -79,8 +125,8 @@ const play = async (voiceId: AdhanVoiceId, options: PlaybackOptions = {}) => {
 
 export const adhanAudioService = {
   playPreview: (voiceId: AdhanVoiceId, options: PlaybackOptions = {}) =>
-    play(voiceId, { durationMs: 10000, ...options }),
+    play(voiceId, { durationMs: 10000, backgroundPlayback: false, ...options }),
   playPrayerAdhan: (voiceId: AdhanVoiceId, options: PlaybackOptions = {}) =>
-    play(voiceId, { durationMs: 22000, ...options }),
+    play(voiceId, { backgroundPlayback: true, ...options }),
   stop: stopCurrent,
 };

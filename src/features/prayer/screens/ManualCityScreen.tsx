@@ -25,7 +25,7 @@ export const ManualCityScreen: React.FC<Props> = ({ navigation }) => {
   const isRTL = language === 'ar';
 
   return (
-    <Screen scroll={false} showDecorations={false}>
+    <Screen scroll={false} showDecorations={false} showThemeToggle={false}>
       <FlatList
         data={supportedCities}
         keyExtractor={(item) => item.id}

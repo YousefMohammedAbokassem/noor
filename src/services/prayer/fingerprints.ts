@@ -1,4 +1,4 @@
-import { AdhanTestSchedule, PrayerDaySchedule, PrayerSettings } from '@/types/models';
+import { PrayerDaySchedule, PrayerSettings } from '@/types/models';
 
 const stableStringify = (value: unknown): string => {
   if (value === null || typeof value !== 'object') {
@@ -46,7 +46,6 @@ export const buildNotificationFingerprint = (
   settings: PrayerSettings,
   lang: 'ar' | 'en',
   days: PrayerDaySchedule[],
-  adhanTestSchedule?: AdhanTestSchedule,
 ) =>
   stableStringify({
     lang,
@@ -56,12 +55,8 @@ export const buildNotificationFingerprint = (
     preAdhanReminderEnabled: settings.preAdhanReminderEnabled,
     preAdhanReminderMinutes: settings.preAdhanReminderMinutes,
     prayerNotifications: settings.prayerNotifications,
-    adhanTestSchedule: adhanTestSchedule
-      ? {
-          enabled: adhanTestSchedule.enabled,
-          times: adhanTestSchedule.times,
-        }
-      : null,
+    timeMode: settings.timeMode,
+    manualPrayerTimes: settings.manualPrayerTimes,
     days: days.map((day) => ({
       date: day.date,
       timezone: day.timezone,

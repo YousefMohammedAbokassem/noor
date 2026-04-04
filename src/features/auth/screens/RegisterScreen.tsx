@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Image, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,10 +11,8 @@ import { AppText } from '@/components/ui/AppText';
 import { AppInput } from '@/components/ui/AppInput';
 import { AppButton } from '@/components/ui/AppButton';
 import { authApi } from '@/api/authApi';
-import { secureSession } from '@/services/storage';
 import { useAuthStore } from '@/state/authStore';
 import { buildDeviceMeta } from '@/utils/device';
-import { syncService } from '@/services/syncService';
 import { useSettingsStore } from '@/state/settingsStore';
 import { getThemeByMode } from '@/theme';
 
@@ -63,7 +62,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
     setError('');
     try {
-      const result = await authApi.register({
+      await authApi.register({
         email: values.email,
         password: values.password,
         fullName: values.fullName,
@@ -71,10 +70,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         numberFormat: auth.numberFormat,
         device: await buildDeviceMeta(),
       });
-      await secureSession.saveTokens(result.tokens);
-      auth.login(result.user);
-      await syncService.syncNow().catch(() => null);
-      navigation.navigate('VerifyEmail', { email: values.email });
+      navigation.replace('VerifyEmail', { email: values.email.trim() });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -83,12 +79,16 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <Screen>
+    <Screen showDecorations={false} showThemeToggle={false}>
+      <View style={styles.hero}>
+        <Image source={require('../../../../assets/logo-mark.webp')} style={styles.logo} resizeMode="contain" />
+      </View>
       <AppInput
         label={t('auth.fullName')}
         value={watch('fullName')}
         onChangeText={(v) => setValue('fullName', v, { shouldValidate: true })}
         error={errors.fullName?.message}
+        autoCapitalize="words"
       />
       <AppInput
         label={t('auth.email')}
@@ -96,6 +96,8 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         value={watch('email')}
         onChangeText={(v) => setValue('email', v, { shouldValidate: true })}
         error={errors.email?.message}
+        autoCapitalize="none"
+        autoCorrect={false}
       />
       <AppInput
         label={t('auth.password')}
@@ -103,6 +105,8 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         value={watch('password')}
         onChangeText={(v) => setValue('password', v, { shouldValidate: true })}
         error={errors.password?.message}
+        autoCapitalize="none"
+        autoCorrect={false}
       />
       <AppInput
         label={t('auth.confirmPassword')}
@@ -110,6 +114,8 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         value={watch('confirmPassword')}
         onChangeText={(v) => setValue('confirmPassword', v, { shouldValidate: true })}
         error={errors.confirmPassword?.message}
+        autoCapitalize="none"
+        autoCorrect={false}
       />
 
       {!!error && <AppText color={theme.colors.neutral.danger}>{error}</AppText>}
@@ -119,3 +125,15 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     </Screen>
   );
 };
+
+const styles = StyleSheet.create({
+  hero: {
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  logo: {
+    width: 92,
+    height: 92,
+  },
+});

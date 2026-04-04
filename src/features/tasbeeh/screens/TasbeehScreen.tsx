@@ -3,12 +3,15 @@ import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
+import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '@/components/ui/Screen';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
+import { InlineBackThemeBar } from '@/components/ui/InlineBackThemeBar';
+import { goBackSmart } from '@/navigation/goBackSmart';
 import { RosaryGraphic } from '@/features/tasbeeh/components/RosaryGraphic';
 import { useTasbeehRosaryAnimation } from '@/features/tasbeeh/hooks/useTasbeehRosaryAnimation';
 import { buildTasbeehGeometry } from '@/features/tasbeeh/utils/rosaryPath';
@@ -22,6 +25,7 @@ const TARGET_OPTIONS = [33, 100, 300];
 
 export const TasbeehScreen: React.FC = () => {
   const { t } = useTranslation();
+  const navigation = useNavigation<any>();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
@@ -141,14 +145,21 @@ export const TasbeehScreen: React.FC = () => {
     reset();
   }, [animateReset, reset]);
 
+  const goBack = useCallback(() => {
+    goBackSmart(navigation);
+  }, [navigation]);
+
   return (
     <Screen
       showDecorations={false}
+      showThemeToggle={false}
       contentStyle={[
         styles.content,
         { paddingBottom: reservedBottomSpace + 24 },
       ]}
     >
+      <InlineBackThemeBar onBack={goBack} />
+
       <View
         style={[
           styles.shell,

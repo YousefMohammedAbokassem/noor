@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppButton } from '@/components/ui/AppButton';
+import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { juzList, surahList } from '@/constants/quran';
 import { QuranTopBar } from '@/features/quran/components/QuranTopBar';
 import { useKhatmaStore } from '@/state/khatmaStore';
@@ -34,16 +35,19 @@ export const JuzIndexScreen: React.FC<Props> = ({ navigation }) => {
     surahList.find((item) => item.startPage <= continuePage && item.endPage >= continuePage) ?? surahList[0];
 
   return (
-    <Screen scroll={false} contentStyle={styles.screen}>
+    <Screen scroll={false} showDecorations={false} showThemeToggle={false} contentStyle={styles.screen}>
       <QuranTopBar
         title={t('quran.juzIndex')}
         subtitle={t('quran.juzIndexSubtitle')}
         onBack={() => navigation.goBack()}
         rightSlot={
-          <View style={[styles.counterBadge, { backgroundColor: theme.colors.brand.mist }]}>
-            <AppText variant="bodySm" color={accentColor}>
-              30
-            </AppText>
+          <View style={styles.topActions}>
+            <View style={[styles.counterBadge, { backgroundColor: theme.colors.brand.mist }]}>
+              <AppText variant="bodySm" color={accentColor}>
+                30
+              </AppText>
+            </View>
+            <ThemeToggleButton compact />
           </View>
         }
       />
@@ -123,6 +127,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   heroCard: {
     gap: 12,

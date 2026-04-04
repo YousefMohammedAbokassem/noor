@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { setLanguage } from '@/i18n';
 import { useAuthStore } from '@/state/authStore';
-import { secureSession } from '@/services/storage';
-import { clearAccountScopedData } from '@/services/accountCleanup';
+import { secureSession, storage } from '@/services/storage';
+import { clearAccountScopedData, clearInstallScopedData } from '@/services/accountCleanup';
 
 export const useAppBootstrap = () => {
   const [isReady, setReady] = useState(false);
@@ -12,10 +12,21 @@ export const useAppBootstrap = () => {
   useEffect(() => {
     const run = async () => {
       try {
-        await setLanguage(language);
+        const installMarker = await storage.getItem<{ installedAt: string }>(storage.keys.installMarker);
+        if (!installMarker) {
+          await clearInstallScopedData();
+          await storage.setItem(storage.keys.installMarker, { installedAt: new Date().toISOString() });
+        }
+
+        const authState = useAuthStore.getState();
+        if (authState.isAuthenticated && authState.user && !authState.user.isEmailVerified) {
+          await clearAccountScopedData();
+        }
+
+        await setLanguage(useAuthStore.getState().language);
 
         const tokens = await secureSession.getTokens();
-        if (!tokens && isAuthenticated) {
+        if (!tokens && useAuthStore.getState().isAuthenticated) {
           await clearAccountScopedData();
         }
       } catch (error) {

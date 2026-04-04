@@ -76,6 +76,61 @@ type QuranPagesBundle = {
   };
 };
 
+type CompactQuranVerse = [
+  id: number,
+  verseKey: string,
+  verseNumber: number,
+  pageNumber: number,
+  juzNumber: number,
+  hizbNumber: number,
+  rubElHizbNumber: number,
+  rukuNumber: number | null,
+  manzilNumber: number | null,
+  text: string,
+];
+
+type CompactQuranChapter = [
+  id: number,
+  nameAr: string,
+  nameSimple: string,
+  nameComplex: string,
+  translatedName: string,
+  translatedNameLanguage: string,
+  revelationPlace: string,
+  revelationOrder: number,
+  versesCount: number,
+  bismillahPre: number,
+  startPage: number,
+  endPage: number,
+  verses: CompactQuranVerse[],
+];
+
+type CompactQuranPageVerse = [id: number, verseKey: string, number: number, text: string];
+type CompactQuranPageSection = [
+  chapterId: number,
+  chapterNameAr: string,
+  chapterNameSimple: string,
+  verses: CompactQuranPageVerse[],
+];
+type CompactQuranPage = [
+  pageNumber: number,
+  juzNumber: number,
+  hizbNumber: number,
+  rubElHizbNumber: number,
+  manzilNumber: number | null,
+  sections: CompactQuranPageSection[],
+];
+
+type CompactQuranPagesBundle = {
+  pages: CompactQuranPage[];
+  stats: [totalPages: number, totalVerses: number];
+};
+
+type CompactQuranChaptersBundle = {
+  chapters: CompactQuranChapter[];
+  stats: [totalChapters: number, totalVerses: number, generatedAt: string, source: string];
+};
+
 type QuranChaptersBundle = {
   chapters: QuranChapter[];
   stats: {
@@ -135,9 +190,64 @@ let chapterContentMapCache: Map<number, QuranChapter> | null = null;
 const chapterSummaryMap = new Map(quranChapterSummaries.map((chapter) => [chapter.id, chapter]));
 const juzSummaryMap = new Map(quranJuzSummaries.map((juz) => [juz.id, juz]));
 
+const decodeCompactVerse = (verse: CompactQuranVerse): QuranVerse => ({
+  id: verse[0],
+  verseKey: verse[1],
+  verseNumber: verse[2],
+  pageNumber: verse[3],
+  juzNumber: verse[4],
+  hizbNumber: verse[5],
+  rubElHizbNumber: verse[6],
+  rukuNumber: verse[7],
+  manzilNumber: verse[8],
+  text: verse[9],
+});
+
+const decodeCompactChapter = (chapter: CompactQuranChapter): QuranChapter => ({
+  id: chapter[0],
+  nameAr: chapter[1],
+  nameSimple: chapter[2],
+  nameComplex: chapter[3],
+  translatedName: chapter[4],
+  translatedNameLanguage: chapter[5],
+  revelationPlace: chapter[6],
+  revelationOrder: chapter[7],
+  versesCount: chapter[8],
+  bismillahPre: chapter[9] === 1,
+  startPage: chapter[10],
+  endPage: chapter[11],
+  verses: chapter[12].map(decodeCompactVerse),
+});
+
+const decodeCompactPage = (page: CompactQuranPage): QuranPage => ({
+  pageNumber: page[0],
+  juzNumber: page[1],
+  hizbNumber: page[2],
+  rubElHizbNumber: page[3],
+  manzilNumber: page[4],
+  sections: page[5].map((section) => ({
+    chapterId: section[0],
+    chapterNameAr: section[1],
+    chapterNameSimple: section[2],
+    verses: section[3].map((verse) => ({
+      id: verse[0],
+      verseKey: verse[1],
+      number: verse[2],
+      text: verse[3],
+    })),
+  })),
+});
+
 const getPagesBundle = () => {
   if (!pagesBundleCache) {
-    pagesBundleCache = require('../../../assets/content/quran/pages.bundle.json') as QuranPagesBundle;
+    const rawBundle = require('../../../assets/content/quran/pages.compact.json') as CompactQuranPagesBundle;
+    pagesBundleCache = {
+      pages: rawBundle.pages.map(decodeCompactPage),
+      stats: {
+        totalPages: rawBundle.stats[0],
+        totalVerses: rawBundle.stats[1],
+      },
+    };
   }
   return pagesBundleCache;
 };
@@ -151,7 +261,16 @@ const getPageMap = () => {
 
 const getChaptersBundle = () => {
   if (!chaptersBundleCache) {
-    chaptersBundleCache = require('../../../assets/content/quran/chapters.bundle.json') as QuranChaptersBundle;
+    const rawBundle = require('../../../assets/content/quran/chapters.compact.json') as CompactQuranChaptersBundle;
+    chaptersBundleCache = {
+      chapters: rawBundle.chapters.map(decodeCompactChapter),
+      stats: {
+        totalChapters: rawBundle.stats[0],
+        totalVerses: rawBundle.stats[1],
+        generatedAt: rawBundle.stats[2],
+        source: rawBundle.stats[3],
+      },
+    };
   }
   return chaptersBundleCache;
 };

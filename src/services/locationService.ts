@@ -2,6 +2,7 @@ import * as Location from 'expo-location';
 import { getDeviceTimeZone } from '@/services/prayer/dateTime';
 
 const roundCoordinate = (value: number) => Math.round(value * 10_000) / 10_000;
+const tzLookup: (latitude: number, longitude: number) => string = require('tz-lookup');
 
 type PrayerLocationSnapshot = {
   latitude: number;
@@ -34,6 +35,10 @@ const toPrayerLocationSnapshot = async (position: Location.LocationObject): Prom
   }
 
   const locationLabel = city ?? country;
+  const timeZone = locationService.resolveTimeZoneForCoordinates(
+    position.coords.latitude,
+    position.coords.longitude,
+  );
 
   return {
     latitude: roundCoordinate(position.coords.latitude),
@@ -41,7 +46,7 @@ const toPrayerLocationSnapshot = async (position: Location.LocationObject): Prom
     city,
     country,
     countryCode,
-    timeZone: getDeviceTimeZone(),
+    timeZone,
     locationLabel,
     locationUpdatedAt: new Date().toISOString(),
     locationSource: 'gps',
@@ -49,6 +54,13 @@ const toPrayerLocationSnapshot = async (position: Location.LocationObject): Prom
 };
 
 export const locationService = {
+  resolveTimeZoneForCoordinates: (latitude: number, longitude: number) => {
+    try {
+      return tzLookup(latitude, longitude);
+    } catch {
+      return getDeviceTimeZone();
+    }
+  },
   getPermissionStatus: async () => {
     const { status } = await Location.getForegroundPermissionsAsync();
     return status === 'granted';

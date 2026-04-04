@@ -15,9 +15,10 @@ export type RootStackParamList = {
   PermissionGate: { nextRoute: PermissionGateNextRoute };
   Language: undefined;
   Onboarding: undefined;
-  Login: undefined;
+  Login: { email?: string; successMessage?: string } | undefined;
   Register: undefined;
-  ForgotPassword: undefined;
+  ForgotPassword: { email?: string } | undefined;
+  ResetPassword: { email?: string } | undefined;
   VerifyEmail: { email?: string } | undefined;
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   CreateKhatmaStep1: undefined;

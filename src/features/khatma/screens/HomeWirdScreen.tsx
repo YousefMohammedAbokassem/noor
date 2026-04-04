@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
+import { CompositeNavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { AppText } from '@/components/ui/AppText';
@@ -15,8 +16,12 @@ import { TOTAL_QURAN_PAGES, surahList } from '@/constants/quran';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useAuthStore } from '@/state/authStore';
 import { getThemeByMode } from '@/theme';
-import { ThemeMode } from '@/types/models';
+import { AdhanPrayerName, ThemeMode } from '@/types/models';
+import { useAppAlert } from '@/components/ui/AppAlertProvider';
 import { useThemeTransition } from '@/components/theme/ThemeTransitionProvider';
+import { prayerRuntime } from '@/services/prayer/prayerRuntime';
+import { buildManualPrayerTimesSeed, updateManualPrayerTime } from '@/services/prayer/manualTimes';
+import { parseClockTime } from '@/utils/time';
 
 const prayerItems: Array<{ key: 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha' }> = [
   { key: 'fajr' },
@@ -26,6 +31,7 @@ const prayerItems: Array<{ key: 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib'
   { key: 'maghrib' },
   { key: 'isha' },
 ];
+const adhanPrayerKeys: AdhanPrayerName[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
 type HomeNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Home'>,
@@ -41,6 +47,16 @@ const withAlpha = (hex: string, alpha: number) => {
 
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+
+const toClockTimeDate = (value: string) => {
+  const parsed = parseClockTime(value) ?? { hour: 0, minute: 0 };
+  const nextDate = new Date();
+  nextDate.setHours(parsed.hour, parsed.minute, 0, 0);
+  return nextDate;
+};
+
+const toClockTimeValue = (value: Date) =>
+  `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
 
 const getHomePalette = (mode: ThemeMode) => {
   const theme = getThemeByMode(mode);
@@ -108,13 +124,14 @@ const getHomePalette = (mode: ThemeMode) => {
 
 export const HomeWirdScreen: React.FC = () => {
   const { t } = useTranslation();
+  const { showAlert } = useAppAlert();
   const navigation = useNavigation<HomeNavigationProp>();
   const khatma = useKhatmaStore((s) => s.activeKhatma);
   const reading = useKhatmaStore((s) => s.readingProgress);
   const pinnedMarker = useKhatmaStore((s) => s.pinnedMarker);
   const completeDailyWird = useKhatmaStore((s) => s.completeDailyWird);
   const prayerTimes = usePrayerStore((s) => s.prayerTimes);
-  const countdown = usePrayerCountdown(prayerTimes);
+  const prayerSettings = useSettingsStore((s) => s.prayerSettings);
   const language = useAuthStore((s) => s.language);
   const mode = useSettingsStore((s) => s.readerTheme);
   const { toggleTheme } = useThemeTransition();
@@ -122,20 +139,37 @@ export const HomeWirdScreen: React.FC = () => {
   const palette = useMemo(() => getHomePalette(mode), [mode]);
   const isRTL = language === 'ar';
   const [now, setNow] = useState(() => new Date());
+  const [activeTimePickerPrayer, setActiveTimePickerPrayer] = useState<AdhanPrayerName | null>(null);
+  const [pickerTime, setPickerTime] = useState(() => toClockTimeDate('05:00'));
+  const scrollRef = useRef<ScrollView>(null);
 
   const continuePage = pinnedMarker?.page ?? reading.currentPage;
   const currentSurah =
     surahList.find((surah) => surah.startPage <= continuePage && surah.endPage >= continuePage) ??
     surahList[0];
+  const effectivePrayerTimes = prayerTimes;
+  const countdown = usePrayerCountdown(effectivePrayerTimes);
 
   const primarySurahName = language === 'ar' ? currentSurah.nameAr : currentSurah.nameEn;
   const nextPrayerLabel = countdown.nextName ? t(`prayer.names.${countdown.nextName}`) : t('common.notAvailable');
   const nextPrayerTime = countdown.nextTime ?? '--:--';
-  const nextPrayerSummary = prayerTimes
+  const nextPrayerSummary = effectivePrayerTimes
     ? `${t('prayer.nextPrayer')}: ${nextPrayerLabel} • ${nextPrayerTime}`
     : t('home.noPrayerTimesHint');
   const locale = language === 'ar' ? 'ar-SA' : 'en-US';
   const pagesRemaining = khatma ? Math.max(0, khatma.endPage - khatma.currentPage) : Math.max(0, TOTAL_QURAN_PAGES - continuePage);
+
+  useFocusEffect(
+    useCallback(() => {
+      const frame = requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+      });
+
+      return () => {
+        cancelAnimationFrame(frame);
+      };
+    }, []),
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -177,6 +211,83 @@ export const HomeWirdScreen: React.FC = () => {
       juz: currentSurah.juz,
     });
 
+  const buildManualAdhanTimes = useCallback(
+    (override?: Partial<Record<AdhanPrayerName, string>>) =>
+      ({
+        ...buildManualPrayerTimesSeed(
+          prayerSettings.timeMode === 'manual' ? undefined : prayerTimes,
+          prayerSettings.manualPrayerTimes,
+        ),
+        ...(override ?? {}),
+      }) satisfies Record<AdhanPrayerName, string>,
+    [prayerSettings.manualPrayerTimes, prayerSettings.timeMode, prayerTimes],
+  );
+
+  const closeTimePicker = useCallback(() => {
+    setActiveTimePickerPrayer(null);
+  }, []);
+
+  const openQuickTimePicker = useCallback(
+    (prayer: AdhanPrayerName) => {
+      if (prayerSettings.timeMode !== 'manual') {
+        return;
+      }
+      setPickerTime(toClockTimeDate(buildManualAdhanTimes()[prayer]));
+      setActiveTimePickerPrayer(prayer);
+    },
+    [buildManualAdhanTimes, prayerSettings.timeMode],
+  );
+
+  const confirmQuickTimePicker = useCallback(async () => {
+    if (!activeTimePickerPrayer) return;
+
+    const nextTime = toClockTimeValue(pickerTime);
+    const nextTimes = updateManualPrayerTime(buildManualAdhanTimes(), activeTimePickerPrayer, nextTime);
+    closeTimePicker();
+    await prayerRuntime.updatePrayerSettings(
+      {
+        timeMode: 'manual',
+        manualPrayerTimes: nextTimes,
+      },
+      'home_quick_manual_prayer_time_changed',
+    );
+  }, [activeTimePickerPrayer, buildManualAdhanTimes, closeTimePicker, pickerTime]);
+
+  const handleManualTimingPress = useCallback(() => {
+    if (prayerSettings.timeMode === 'manual') {
+      navigation.navigate('PrayerSettings');
+      return;
+    }
+
+    const seededTimes = buildManualAdhanTimes();
+    void (async () => {
+      await prayerRuntime.updatePrayerSettings(
+        {
+          timeMode: 'manual',
+          manualPrayerTimes: seededTimes,
+        },
+        'home_enable_manual_times',
+      );
+      navigation.navigate('PrayerSettings');
+    })();
+  }, [buildManualAdhanTimes, navigation, prayerSettings.timeMode]);
+
+  const handleCompleteDailyWird = useCallback(() => {
+    const result = completeDailyWird();
+    if (result !== 'completed') return;
+
+    showAlert(t('home.khatmaCompletedTitle'), t('home.khatmaCompletedMessage'), [
+      {
+        text: t('home.khatmaCompletedDismiss'),
+        style: 'cancel',
+      },
+      {
+        text: t('home.khatmaCompletedAction'),
+        onPress: () => navigation.navigate('CreateKhatmaStep1'),
+      },
+    ]);
+  }, [completeDailyWird, navigation, showAlert, t]);
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: palette.pageBackground }]}>
       <StatusBar
@@ -185,6 +296,7 @@ export const HomeWirdScreen: React.FC = () => {
       />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.content,
           {
@@ -258,7 +370,7 @@ export const HomeWirdScreen: React.FC = () => {
                   <AppText variant="headingMd" color={palette.heroText} style={styles.heroCentered}>
                     {dayLabel}
                   </AppText>
-                  <AppText variant="headingLg" color={palette.heroTime} style={[styles.heroCentered, styles.heroClock]}>
+                  <AppText variant="headingLg" direction="ltr" color={palette.heroTime} style={[styles.heroCentered, styles.heroClock]}>
                     {timeLabel}
                   </AppText>
                 </View>
@@ -326,9 +438,17 @@ export const HomeWirdScreen: React.FC = () => {
         <View style={styles.prayerRow}>
           {prayerItems.map((item) => {
             const isNext = countdown.nextName === item.key;
+            const isCustomizable =
+              prayerSettings.timeMode === 'manual' && adhanPrayerKeys.includes(item.key as AdhanPrayerName);
             return (
-              <View
+              <Pressable
                 key={item.key}
+                disabled={!isCustomizable}
+                onPress={() => {
+                  if (isCustomizable) {
+                    void openQuickTimePicker(item.key as AdhanPrayerName);
+                  }
+                }}
                 style={[
                   styles.prayerChip,
                   isNext && styles.prayerChipActive,
@@ -364,31 +484,97 @@ export const HomeWirdScreen: React.FC = () => {
                     </View>
                     <AppText
                       variant="headingSm"
+                      direction="ltr"
                       color={palette.prayerChipTime}
                       style={[styles.prayerTextCenter, styles.prayerTimeActive]}
+                      numberOfLines={1}
                     >
-                      {prayerTimes?.[item.key] ?? '--:--'}
+                      {effectivePrayerTimes?.[item.key] ?? '--:--'}
                     </AppText>
-                    <AppText variant="bodySm" color={palette.prayerChipLabel} style={styles.prayerTextCenter}>
+                    <AppText variant="bodySm" color={palette.prayerChipLabel} style={styles.prayerTextCenter} numberOfLines={1}>
                       {t(`prayer.names.${item.key}`)}
                     </AppText>
-                    <AppText variant="label" color={palette.prayerChipTime} style={styles.prayerTextCenter}>
-                      {`${t('prayer.remaining')}: ${countdown.remaining ?? '--:--:--'}`}
-                    </AppText>
+                    <View style={[styles.prayerRemainingRow, isRTL && styles.rowReverse]}>
+                      <AppText
+                        variant="label"
+                        color={palette.prayerChipTime}
+                        style={styles.prayerRemainingLabel}
+                        numberOfLines={1}
+                      >
+                        {t('prayer.remaining')}
+                      </AppText>
+                      <AppText
+                        variant="label"
+                        direction="ltr"
+                        color={palette.prayerChipTime}
+                        style={styles.prayerRemainingValue}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.8}
+                      >
+                        {countdown.remaining ?? '--:--:--'}
+                      </AppText>
+                    </View>
                   </>
                 ) : (
                   <>
-                    <AppText variant="label" color={palette.prayerChipTime} style={styles.prayerTextCenter}>
-                      {prayerTimes?.[item.key] ?? '--:--'}
+                    <AppText variant="label" direction="ltr" color={palette.prayerChipTime} style={styles.prayerTextCenter} numberOfLines={1}>
+                      {effectivePrayerTimes?.[item.key] ?? '--:--'}
                     </AppText>
-                    <AppText variant="bodySm" color={palette.prayerChipLabel} style={styles.prayerTextCenter}>
+                    <AppText variant="bodySm" color={palette.prayerChipLabel} style={styles.prayerTextCenter} numberOfLines={1}>
                       {t(`prayer.names.${item.key}`)}
                     </AppText>
                   </>
                 )}
-              </View>
+              </Pressable>
             );
           })}
+        </View>
+
+        <View style={[styles.prayerModeRow, isRTL && styles.rowReverse]}>
+          <View
+            style={[
+              styles.prayerModeBadge,
+              {
+                backgroundColor: palette.quickMetaBg,
+                borderColor: palette.quickMetaBorder,
+              },
+            ]}
+          >
+            <Ionicons
+              name={prayerSettings.timeMode === 'manual' ? 'create-outline' : 'sparkles-outline'}
+              size={16}
+              color={palette.gridValue}
+            />
+            <View style={styles.prayerModeCopy}>
+              <AppText variant="label" color={palette.gridValue}>
+                {prayerSettings.timeMode === 'manual' ? t('prayer.timeModeManual') : t('prayer.timeModeAuto')}
+              </AppText>
+              <AppText variant="bodySm" color={palette.cardSubtitle}>
+                {prayerSettings.timeMode === 'manual' ? t('prayer.manualTimesActiveHint') : t('prayer.manualTimesHomeHint')}
+              </AppText>
+            </View>
+          </View>
+
+          <Pressable
+            onPress={handleManualTimingPress}
+            style={({ pressed }) => [
+              styles.prayerModeAction,
+              isRTL && styles.rowReverse,
+              {
+                backgroundColor: palette.sectionActionBg,
+                borderColor: palette.sectionActionBorder,
+                opacity: pressed ? 0.78 : 1,
+              },
+            ]}
+          >
+            <Ionicons name="create-outline" size={16} color={palette.sectionAction} />
+            <AppText variant="bodySm" color={palette.sectionAction}>
+              {prayerSettings.timeMode === 'manual'
+                ? t('prayer.editManualTimesAction')
+                : t('prayer.enableManualTimesAction')}
+            </AppText>
+          </Pressable>
         </View>
 
         <View style={styles.sectionHeader}>
@@ -506,7 +692,7 @@ export const HomeWirdScreen: React.FC = () => {
 
               <View style={[styles.actionsRow, isRTL && styles.rowReverse]}>
                 <Pressable
-                  onPress={completeDailyWird}
+                  onPress={handleCompleteDailyWird}
                   style={({ pressed }) => [
                     styles.actionButton,
                     styles.actionButtonPrimary,
@@ -613,14 +799,73 @@ export const HomeWirdScreen: React.FC = () => {
                   {nextPrayerSummary}
                 </AppText>
                 <View style={[styles.quickMetaBadge, { backgroundColor: palette.quickMetaBg, borderColor: palette.quickMetaBorder }]}>
-                  <AppText variant="label" color={palette.gridValue}>
-                    {prayerTimes ? `${t('prayer.remaining')}: ${countdown.remaining ?? '--:--:--'}` : t('home.updatePrayerTimes')}
-                  </AppText>
+                  {prayerTimes ? (
+                    <View style={[styles.quickMetaRow, isRTL && styles.rowReverse]}>
+                      <AppText variant="label" color={palette.gridValue} numberOfLines={1}>
+                        {t('prayer.remaining')}
+                      </AppText>
+                      <AppText variant="label" direction="ltr" color={palette.gridValue} numberOfLines={1}>
+                        {countdown.remaining ?? '--:--:--'}
+                      </AppText>
+                    </View>
+                  ) : (
+                    <AppText variant="label" color={palette.gridValue}>
+                      {t('home.updatePrayerTimes')}
+                    </AppText>
+                  )}
                 </View>
               </View>
             )}
           </Pressable>
         </View>
+
+        <Modal visible={activeTimePickerPrayer !== null} transparent animationType="fade" onRequestClose={closeTimePicker}>
+          <View style={styles.modalOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeTimePicker} />
+            <View
+              style={[
+                styles.timePickerSheet,
+                {
+                  backgroundColor: theme.colors.neutral.surface,
+                  borderColor: theme.colors.neutral.borderStrong,
+                },
+              ]}
+            >
+              <View style={styles.timePickerHeader}>
+                <AppText variant="headingSm">
+                  {activeTimePickerPrayer ? t(`prayer.names.${activeTimePickerPrayer}`) : t('prayer.todayTimes')}
+                </AppText>
+                <Pressable
+                  onPress={() => {
+                    void confirmQuickTimePicker();
+                  }}
+                  style={({ pressed }) => [
+                    styles.timePickerConfirm,
+                    {
+                      backgroundColor: theme.colors.brand.lightGreen,
+                      opacity: pressed ? 0.9 : 1,
+                    },
+                  ]}
+                >
+                  <Ionicons name="checkmark" size={18} color={theme.colors.brand.darkGreen} />
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={pickerTime}
+                mode="time"
+                display="spinner"
+                is24Hour
+                minuteInterval={1}
+                themeVariant={mode === 'dark' ? 'dark' : 'light'}
+                onChange={(_, nextValue) => {
+                  if (nextValue) {
+                    setPickerTime(nextValue);
+                  }
+                }}
+              />
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -639,6 +884,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  prayerModeRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  prayerModeBadge: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  prayerModeCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  prayerModeAction: {
+    minWidth: 162,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    flexDirection: 'row',
   },
   headerIcons: {
     flexDirection: 'row',
@@ -769,6 +1045,23 @@ const styles = StyleSheet.create({
   prayerTimeActive: {
     fontSize: 15,
     lineHeight: 20,
+  },
+  prayerRemainingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    width: '100%',
+  },
+  prayerRemainingLabel: {
+    fontSize: 10,
+    lineHeight: 12,
+    flexShrink: 1,
+  },
+  prayerRemainingValue: {
+    fontSize: 10,
+    lineHeight: 12,
+    flexShrink: 1,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -940,5 +1233,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 8,
+  },
+  quickMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  timePickerSheet: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 16,
+    gap: 10,
+  },
+  timePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  timePickerConfirm: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

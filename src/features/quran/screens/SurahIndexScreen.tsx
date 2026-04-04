@@ -9,6 +9,7 @@ import { AppText } from '@/components/ui/AppText';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppInput } from '@/components/ui/AppInput';
 import { AppButton } from '@/components/ui/AppButton';
+import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { surahList } from '@/constants/quran';
 import { QuranTopBar } from '@/features/quran/components/QuranTopBar';
 import { useKhatmaStore } from '@/state/khatmaStore';
@@ -63,16 +64,19 @@ export const SurahIndexScreen: React.FC<Props> = ({ navigation }) => {
     surahList[0];
 
   return (
-    <Screen scroll={false} contentStyle={styles.screen}>
+    <Screen scroll={false} showDecorations={false} showThemeToggle={false} contentStyle={styles.screen}>
       <QuranTopBar
         title={t('quran.surahIndex')}
         subtitle={t('quran.surahIndexSubtitle')}
         onBack={() => navigation.goBack()}
         rightSlot={
-          <View style={[styles.counterBadge, { backgroundColor: theme.colors.brand.mist }]}>
-            <AppText variant="bodySm" color={accentColor}>
-              {filteredSurahs.length}
-            </AppText>
+          <View style={styles.topActions}>
+            <View style={[styles.counterBadge, { backgroundColor: theme.colors.brand.mist }]}>
+              <AppText variant="bodySm" color={accentColor}>
+                {filteredSurahs.length}
+              </AppText>
+            </View>
+            <ThemeToggleButton compact />
           </View>
         }
       />
@@ -177,6 +181,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   heroCard: {
     gap: 12,

@@ -12,7 +12,7 @@ const ensureSound = async () => {
     playThroughEarpieceAndroid: false,
   });
 
-  const soundResult = await Audio.Sound.createAsync(require('../../assets/audio/page-flip.aiff'), {
+  const soundResult = await Audio.Sound.createAsync(require('../../assets/audio/page-flip.m4a'), {
     shouldPlay: false,
     volume: 0.5,
   });

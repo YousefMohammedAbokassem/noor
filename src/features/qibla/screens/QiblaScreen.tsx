@@ -1,14 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { isDevice } from 'expo-device';
 import { Magnetometer } from 'expo-sensors';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppButton } from '@/components/ui/AppButton';
+import { InlineBackThemeBar } from '@/components/ui/InlineBackThemeBar';
 import { ErrorState } from '@/components/states/ErrorState';
 import { locationService } from '@/services/locationService';
 import { qiblaService } from '@/services/qiblaService';
+import { goBackSmart } from '@/navigation/goBackSmart';
 import { useSettingsStore } from '@/state/settingsStore';
 import { getThemeByMode } from '@/theme';
 
@@ -24,9 +29,12 @@ const headingFromSensor = (x: number, y: number) => {
 
 export const QiblaScreen: React.FC = () => {
   const { t } = useTranslation();
+  const navigation = useNavigation<any>();
+  const route = useRoute();
   const mode = useSettingsStore((s) => s.readerTheme);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
+  const showInlineTopBar = route.name === 'QiblaTab';
 
   const [heading, setHeading] = useState(0);
   const [qiblaAngle, setQiblaAngle] = useState<number | null>(null);
@@ -76,6 +84,11 @@ export const QiblaScreen: React.FC = () => {
     let mounted = true;
 
     const startSensors = async () => {
+      if (!isDevice) {
+        setSensorError(t('qibla.simulatorSensorHint'));
+        return;
+      }
+
       try {
         headingSub = await locationService.watchHeading((value) => {
           applySmoothHeading(value);
@@ -123,8 +136,16 @@ export const QiblaScreen: React.FC = () => {
   const hasReadyQibla = qiblaAngle !== null;
   const shouldShowBlockingError = !!locationError && !hasReadyQibla;
 
+  const goBack = useCallback(() => {
+    goBackSmart(navigation);
+  }, [navigation]);
+
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
+      {showInlineTopBar && (
+        <InlineBackThemeBar onBack={goBack} />
+      )}
+
       {isLoading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator

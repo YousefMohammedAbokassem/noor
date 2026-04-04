@@ -6,6 +6,7 @@ export type AdhanVoiceOption = {
   labelEn: string;
   source: number;
   notificationSound: string;
+  iosNotificationSound: string;
 };
 
 // Note: In Expo Go, custom notification sounds are not supported.
@@ -17,6 +18,7 @@ export const adhanVoiceOptions: AdhanVoiceOption[] = [
     labelEn: 'Abdul Basit Abdus Samad',
     source: require('../../assets/audio/adhan/abdul_basit_adhan.mp3'),
     notificationSound: 'abdul_basit_adhan.mp3',
+    iosNotificationSound: 'abdul_basit_adhan_ios.caf',
   },
   {
     id: 'haram_makki',
@@ -24,6 +26,7 @@ export const adhanVoiceOptions: AdhanVoiceOption[] = [
     labelEn: 'Masjid al-Haram',
     source: require('../../assets/audio/adhan/haram_makki_adhan.mp3'),
     notificationSound: 'haram_makki_adhan.mp3',
+    iosNotificationSound: 'haram_makki_adhan_ios.caf',
   },
   {
     id: 'haram_nabawi',
@@ -31,6 +34,7 @@ export const adhanVoiceOptions: AdhanVoiceOption[] = [
     labelEn: 'Masjid an-Nabawi',
     source: require('../../assets/audio/adhan/haram_nabawi_adhan.mp3'),
     notificationSound: 'haram_nabawi_adhan.mp3',
+    iosNotificationSound: 'haram_nabawi_adhan_ios.caf',
   },
 ];
 

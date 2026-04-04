@@ -36,6 +36,12 @@ export type AuthResponse = {
   tokens: AuthTokens;
 };
 
+export type RegisterResponse = {
+  user: User;
+  requiresEmailVerification: boolean;
+  verificationExpiresInMinutes: number;
+};
+
 export type SyncPayload = {
   khatma?: Khatma;
   readingProgress?: ReadingProgress;

@@ -30,9 +30,9 @@ export const PrayerLoadingScreen: React.FC<Props> = ({ navigation }) => {
   }, [navigation]);
 
   return (
-    <Screen showDecorations={false} scroll={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} scroll={false} contentStyle={styles.content}>
       <View style={[styles.heroCircle, { backgroundColor: theme.colors.neutral.surfaceAlt }]}>
-        <Image source={require('../../../../assets/prayer-request.png')} style={styles.heroImage} resizeMode="contain" />
+        <Image source={require('../../../../assets/prayer-request.webp')} style={styles.heroImage} resizeMode="contain" />
       </View>
       <ActivityIndicator size="large" color={theme.colors.brand.lightGreen} />
       <AppText variant="headingSm" style={styles.centerText}>

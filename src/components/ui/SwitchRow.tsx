@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
 import { AppText } from './AppText';
 import { useSettingsStore } from '@/state/settingsStore';
+import { useAuthStore } from '@/state/authStore';
 import { getThemeByMode } from '@/theme';
 
 type Props = {
@@ -13,20 +14,23 @@ type Props = {
 
 export const SwitchRow: React.FC<Props> = ({ label, value, onValueChange, description }) => {
   const mode = useSettingsStore((s) => s.readerTheme);
+  const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
+  const isRTL = language === 'ar';
 
   return (
     <View
       style={[
         styles.container,
+        isRTL && styles.containerRtl,
         {
           borderColor: theme.colors.neutral.borderStrong,
           backgroundColor: theme.colors.neutral.surfaceAlt,
         },
       ]}
     >
-      <View style={styles.content}>
+      <View style={[styles.content, isRTL && styles.contentRtl]}>
         <AppText variant="label">{label}</AppText>
         {!!description && <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>{description}</AppText>}
       </View>
@@ -51,8 +55,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  containerRtl: {
+    flexDirection: 'row-reverse',
+  },
   content: {
     flex: 1,
     gap: 3,
+  },
+  contentRtl: {
+    alignItems: 'flex-end',
   },
 });

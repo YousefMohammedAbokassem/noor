@@ -86,14 +86,14 @@ export const DhikrContentScreen: React.FC<Props> = ({ route }) => {
 
   if (!group.length) {
     return (
-      <Screen showDecorations={false}>
+      <Screen showDecorations={false} showThemeToggle={false}>
         <AppText variant="headingSm">{t('adhkar.noContent')}</AppText>
       </Screen>
     );
   }
 
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
       <AppCard style={[styles.headerCard, { backgroundColor: theme.colors.brand.darkGreen, borderColor: theme.colors.brand.green }]}>
         <AppText variant="headingSm" color={theme.colors.neutral.textOnBrand} style={styles.headerTitle}>
           {language === 'ar' ? category?.titleAr ?? t('adhkar.categories') : category?.titleEn ?? t('adhkar.categories')}

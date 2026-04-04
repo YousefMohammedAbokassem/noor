@@ -1,7 +1,7 @@
 import {
-  AdhanTestSchedule,
   PrayerNotificationToggles,
   NotificationPreviewMode,
+  PrayerManualTimes,
   PrayerSettings,
   PrayerHighLatitudeRule,
   PrayerNotificationMode,
@@ -37,19 +37,17 @@ export const defaultPrayerNotifications: PrayerNotificationToggles = {
   isha: true,
 };
 
-export const defaultAdhanTestSchedule: AdhanTestSchedule = {
-  enabled: false,
-  times: {
-    fajr: '05:00',
-    dhuhr: '12:00',
-    asr: '15:30',
-    maghrib: '18:00',
-    isha: '20:00',
-  },
+export const defaultManualPrayerTimes: PrayerManualTimes = {
+  fajr: '05:00',
+  dhuhr: '12:00',
+  asr: '15:30',
+  maghrib: '18:00',
+  isha: '20:00',
 };
 
 export const defaultPrayerSettings: PrayerSettings = {
   locationMode: 'auto',
+  timeMode: 'auto',
   calculationMethod: 'umm_al_qura',
   highLatitudeRule: 'recommended',
   asrMethod: 'shafi',
@@ -66,18 +64,8 @@ export const defaultPrayerSettings: PrayerSettings = {
   ishaOffset: 0,
   hijriOffset: 0,
   preciseNotifications: false,
+  manualPrayerTimes: defaultManualPrayerTimes,
 };
-
-export const normalizeAdhanTestSchedule = (value?: Partial<AdhanTestSchedule> | null): AdhanTestSchedule => ({
-  enabled: value?.enabled === true,
-  times: {
-    fajr: normalizeClockTimeInput(value?.times?.fajr ?? '') ?? defaultAdhanTestSchedule.times.fajr,
-    dhuhr: normalizeClockTimeInput(value?.times?.dhuhr ?? '') ?? defaultAdhanTestSchedule.times.dhuhr,
-    asr: normalizeClockTimeInput(value?.times?.asr ?? '') ?? defaultAdhanTestSchedule.times.asr,
-    maghrib: normalizeClockTimeInput(value?.times?.maghrib ?? '') ?? defaultAdhanTestSchedule.times.maghrib,
-    isha: normalizeClockTimeInput(value?.times?.isha ?? '') ?? defaultAdhanTestSchedule.times.isha,
-  },
-});
 
 export const normalizePrayerSettings = (value?: Partial<PrayerSettings> | null): PrayerSettings => {
   const merged: PrayerSettings = {
@@ -92,6 +80,7 @@ export const normalizePrayerSettings = (value?: Partial<PrayerSettings> | null):
   return {
     ...merged,
     locationMode: merged.locationMode === 'manual' ? 'manual' : 'auto',
+    timeMode: merged.timeMode === 'manual' ? 'manual' : 'auto',
     latitude: roundCoordinate(merged.latitude),
     longitude: roundCoordinate(merged.longitude),
     city: merged.city?.trim() || undefined,
@@ -134,6 +123,19 @@ export const normalizePrayerSettings = (value?: Partial<PrayerSettings> | null):
     ishaOffset: clampNumber(merged.ishaOffset, 0, -120, 120),
     hijriOffset: clampNumber(merged.hijriOffset, 0, -10, 10),
     preciseNotifications: merged.preciseNotifications === true,
+    manualPrayerTimes: {
+      fajr:
+        normalizeClockTimeInput(merged.manualPrayerTimes?.fajr ?? '') ?? defaultManualPrayerTimes.fajr,
+      dhuhr:
+        normalizeClockTimeInput(merged.manualPrayerTimes?.dhuhr ?? '') ?? defaultManualPrayerTimes.dhuhr,
+      asr:
+        normalizeClockTimeInput(merged.manualPrayerTimes?.asr ?? '') ?? defaultManualPrayerTimes.asr,
+      maghrib:
+        normalizeClockTimeInput(merged.manualPrayerTimes?.maghrib ?? '') ??
+        defaultManualPrayerTimes.maghrib,
+      isha:
+        normalizeClockTimeInput(merged.manualPrayerTimes?.isha ?? '') ?? defaultManualPrayerTimes.isha,
+    },
     updatedAt: merged.updatedAt || undefined,
   };
 };

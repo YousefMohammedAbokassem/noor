@@ -11,7 +11,7 @@ const withAlpha = (hex: string, alpha: number) => {
 };
 
 export const tabBarSizes = {
-  barHeight: 68,
+  barHeight: 74,
   centerButton: 56,
   centerButtonLift: 16,
   sideButtonWidth: 74,
@@ -19,7 +19,8 @@ export const tabBarSizes = {
 };
 
 const tabBarFrame = {
-  centerButtonBottomOffset: 6,
+  centerButtonBottomOffset: 10,
+  outerGap: 10,
 };
 
 export const getTabBarLayout = (bottomInset: number) => {
@@ -29,7 +30,7 @@ export const getTabBarLayout = (bottomInset: number) => {
   return {
     safeBottomInset,
     barHeight,
-    wrapperHeight: barHeight,
+    wrapperHeight: barHeight + tabBarFrame.outerGap,
     centerButtonBottom: safeBottomInset + tabBarFrame.centerButtonBottomOffset,
   };
 };
@@ -44,7 +45,9 @@ export const getTabBarTheme = (mode: ThemeMode) => {
       bar: theme.colors.neutral.surface,
       barBorder: theme.colors.neutral.borderStrong,
       barTopLine: isDark ? theme.colors.brand.softGold : theme.colors.neutral.borderStrong,
-      barInset: withAlpha(theme.colors.neutral.borderStrong, isDark ? 0.08 : 0.12),
+      barGlow: isDark ? withAlpha(theme.colors.brand.softGold, 0.12) : withAlpha(theme.colors.brand.green, 0.14),
+      barInset: isDark ? withAlpha('#FFFFFF', 0.02) : withAlpha('#FFFFFF', 0.54),
+      barInsetBorder: withAlpha(theme.colors.neutral.borderStrong, isDark ? 0.18 : 0.22),
       active: isDark ? theme.colors.brand.softGold : theme.colors.brand.darkGreen,
       inactive: isDark ? '#B8C9BF' : theme.colors.neutral.textMuted,
       tabBubble: isDark ? 'rgba(231, 206, 134, 0.1)' : withAlpha(theme.colors.brand.green, 0.1),

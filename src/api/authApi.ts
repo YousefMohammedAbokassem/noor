@@ -1,9 +1,9 @@
 import { apiClient } from './client';
-import { ApiResponse, AuthResponse, LoginPayload, RegisterPayload } from '@/types/api';
+import { ApiResponse, AuthResponse, LoginPayload, RegisterPayload, RegisterResponse } from '@/types/api';
 
 export const authApi = {
   register: async (payload: RegisterPayload) => {
-    const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/auth/register', payload);
+    const { data } = await apiClient.post<ApiResponse<RegisterResponse>>('/auth/register', payload);
     return data.data;
   },
   login: async (payload: LoginPayload) => {
@@ -19,8 +19,14 @@ export const authApi = {
   forgotPassword: async (email: string) => {
     await apiClient.post('/auth/forgot-password', { email });
   },
+  resetPassword: async (email: string, token: string, newPassword: string) => {
+    await apiClient.post('/auth/reset-password', { email, token, newPassword });
+  },
   verifyEmail: async (email: string, code: string) => {
     await apiClient.post('/auth/verify-email', { email, code });
+  },
+  resendVerification: async (email: string) => {
+    await apiClient.post('/auth/resend-verification', { email });
   },
   logout: async (refreshToken: string) => {
     await apiClient.post('/auth/logout', { refreshToken });

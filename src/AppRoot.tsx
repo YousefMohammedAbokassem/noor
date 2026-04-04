@@ -13,6 +13,8 @@ import i18n from '@/i18n';
 import { usePrayerStore } from '@/state/prayerStore';
 import { useAuthStore } from '@/state/authStore';
 import { useSettingsStore } from '@/state/settingsStore';
+import { useKhatmaStore } from '@/state/khatmaStore';
+import { AppAlertProvider } from '@/components/ui/AppAlertProvider';
 import { notificationService } from '@/services/notificationService';
 import { prayerRuntime } from '@/services/prayer/prayerRuntime';
 import { getDateKeyInTimeZone } from '@/services/prayer/dateTime';
@@ -29,6 +31,9 @@ const queryClient = new QueryClient({
 });
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
+const CLOCK_CHECK_INTERVAL_MS = 30_000;
+const CLOCK_JUMP_TOLERANCE_MS = 90_000;
+const AUTO_LOCATION_REFRESH_INTERVAL_MS = 5 * 60_000;
 
 export const AppRoot = () => {
   const { isReady } = useAppBootstrap();
@@ -38,7 +43,10 @@ export const AppRoot = () => {
   const reminders = useSettingsStore((s) => s.reminders);
   const dhikrLoopSettings = useSettingsStore((s) => s.dhikrLoopSettings);
   const prayerSettings = useSettingsStore((s) => s.prayerSettings);
+  const khatmaUpdatedAt = useKhatmaStore((s) => s.syncMetadata.khatmaUpdatedAt);
   const settingsSyncStartedRef = React.useRef(false);
+  const lastClockSampleRef = React.useRef<{ timestamp: number; timeZone: string } | null>(null);
+  const isAppActiveRef = React.useRef(AppState.currentState === 'active');
 
   React.useEffect(() => {
     if (rating.visible && navigationRef.isReady()) {
@@ -57,9 +65,21 @@ export const AppRoot = () => {
   React.useEffect(() => {
     if (!isReady) return;
     const appStateSubscription = AppState.addEventListener('change', (status) => {
+      isAppActiveRef.current = status === 'active';
       if (status === 'active') {
-        void prayerRuntime.requestRepair('app_foreground', {
+        const now = Date.now();
+        const currentTimeZone = locationService.getCurrentTimeZone();
+        const previous = lastClockSampleRef.current;
+        const clockMovedBack = previous ? now + 60_000 < previous.timestamp : false;
+        const timeZoneChanged = previous ? previous.timeZone !== currentTimeZone : false;
+        lastClockSampleRef.current = {
+          timestamp: now,
+          timeZone: currentTimeZone,
+        };
+
+        void prayerRuntime.requestRepair(clockMovedBack || timeZoneChanged ? 'app_foreground_clock_changed' : 'app_foreground', {
           allowLocationRefresh: true,
+          forceNotificationResync: clockMovedBack || timeZoneChanged,
         });
       }
     });
@@ -90,18 +110,81 @@ export const AppRoot = () => {
 
   React.useEffect(() => {
     if (!isReady) return;
-    const timer = setInterval(() => {
-      const currentPrayerTimes = usePrayerStore.getState().prayerTimes;
-      if (!currentPrayerTimes) return;
+    lastClockSampleRef.current = {
+      timestamp: Date.now(),
+      timeZone: locationService.getCurrentTimeZone(),
+    };
 
-      const timeZone = currentPrayerTimes.timezone ?? locationService.getCurrentTimeZone();
-      const today = getDateKeyInTimeZone(new Date(), timeZone);
+    const timer = setInterval(() => {
+      if (!isAppActiveRef.current) return;
+
+      const currentPrayerTimes = usePrayerStore.getState().prayerTimes;
+      const currentPrayerSettings = useSettingsStore.getState().prayerSettings;
+      const now = new Date();
+      const currentTimeZone = locationService.getCurrentTimeZone();
+      const previous = lastClockSampleRef.current;
+      lastClockSampleRef.current = {
+        timestamp: now.getTime(),
+        timeZone: currentTimeZone,
+      };
+      const elapsed = previous ? now.getTime() - previous.timestamp : CLOCK_CHECK_INTERVAL_MS;
+      const clockJumpedBack = elapsed < -1_000;
+      const clockJumped = clockJumpedBack || Math.abs(elapsed - CLOCK_CHECK_INTERVAL_MS) > CLOCK_JUMP_TOLERANCE_MS;
+      const timeZoneChanged = previous ? previous.timeZone !== currentTimeZone : false;
+
+      const autoLocationRefreshDue = (() => {
+        if (currentPrayerSettings.locationMode !== 'auto') {
+          return false;
+        }
+
+        const lastUpdatedAt = currentPrayerSettings.locationUpdatedAt;
+        if (!lastUpdatedAt) {
+          return true;
+        }
+
+        const lastUpdatedTime = new Date(lastUpdatedAt).getTime();
+        if (!Number.isFinite(lastUpdatedTime)) {
+          return true;
+        }
+
+        return now.getTime() - lastUpdatedTime >= AUTO_LOCATION_REFRESH_INTERVAL_MS;
+      })();
+
+      if (!currentPrayerTimes) {
+        if (autoLocationRefreshDue) {
+          void prayerRuntime.requestRepair('auto_location_refresh_due', {
+            allowLocationRefresh: true,
+            forceNotificationResync: false,
+          });
+        }
+        return;
+      }
+
+      const timeZone = currentPrayerTimes.timezone ?? currentTimeZone;
+      const today = getDateKeyInTimeZone(now, timeZone);
       if (currentPrayerTimes.date !== today) {
         void prayerRuntime.requestRepair('date_rollover', {
-          allowLocationRefresh: false,
+          allowLocationRefresh: currentPrayerSettings.locationMode === 'auto',
+          forceNotificationResync: true,
+        });
+        return;
+      }
+
+      if (clockJumped || timeZoneChanged) {
+        void prayerRuntime.requestRepair('system_clock_changed', {
+          allowLocationRefresh: currentPrayerSettings.locationMode === 'auto',
+          forceNotificationResync: true,
+        });
+        return;
+      }
+
+      if (autoLocationRefreshDue) {
+        void prayerRuntime.requestRepair('auto_location_refresh_due', {
+          allowLocationRefresh: true,
+          forceNotificationResync: false,
         });
       }
-    }, 60_000);
+    }, CLOCK_CHECK_INTERVAL_MS);
 
     return () => {
       clearInterval(timer);
@@ -114,38 +197,59 @@ export const AppRoot = () => {
     let unsubscribe = () => {};
     let active = true;
 
-    void notificationService.subscribeToNotificationOpen((payload) => {
-      if (!navigationRef.isReady()) return;
+    void notificationService
+      .subscribeToNotificationOpen(
+        (payload) => {
+          if (!navigationRef.isReady()) return;
 
-      if (payload.kind === 'adhan' || payload.target === 'prayer') {
-        navigationRef.navigate('MainTabs', { screen: 'Home' });
-        return;
-      }
+          if (payload.kind === 'adhan' || payload.target === 'prayer') {
+            navigationRef.navigate('MainTabs', { screen: 'Home' });
+            return;
+          }
 
-      if (payload.kind === 'pre_adhan') {
-        navigationRef.navigate('MainTabs', { screen: 'Home' });
-        return;
-      }
+          if (payload.kind === 'pre_adhan') {
+            navigationRef.navigate('MainTabs', { screen: 'Home' });
+            return;
+          }
 
-      if (payload.kind === 'dhikr_loop' || payload.target === 'adhkar') {
-        navigationRef.navigate('MainTabs', { screen: 'AdhkarCategories' });
-        return;
-      }
+          if (payload.kind === 'dhikr_loop' || payload.target === 'adhkar') {
+            navigationRef.navigate('MainTabs', { screen: 'AdhkarCategories' });
+            return;
+          }
 
-      navigationRef.navigate('Reminders');
-    }).then((cleanup) => {
-      if (!active) {
-        cleanup();
-        return;
-      }
-      unsubscribe = cleanup;
-    });
+          navigationRef.navigate('Reminders');
+        },
+        { consumeInitialResponse: false },
+      )
+      .then((cleanup) => {
+        if (!active) {
+          cleanup();
+          return;
+        }
+        unsubscribe = cleanup;
+      });
 
     return () => {
       active = false;
       unsubscribe();
     };
   }, [isReady]);
+
+  React.useEffect(() => {
+    if (!isReady || !khatmaUpdatedAt) return;
+
+    const timer = setTimeout(() => {
+      void notificationService.syncSupplementalNotifications({
+        reminders,
+        dhikrLoopSettings,
+        lang: language,
+      });
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [dhikrLoopSettings, isReady, khatmaUpdatedAt, language, reminders]);
 
   if (!isReady) {
     return (
@@ -157,9 +261,11 @@ export const AppRoot = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <NavigationContainer ref={navigationRef}>
-        <RootNavigator />
-      </NavigationContainer>
+      <AppAlertProvider>
+        <NavigationContainer ref={navigationRef}>
+          <RootNavigator />
+        </NavigationContainer>
+      </AppAlertProvider>
     </QueryClientProvider>
   );
 };

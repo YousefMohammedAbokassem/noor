@@ -18,13 +18,13 @@ export const Screen: React.FC<Props> = ({
   children,
   contentStyle,
   showDecorations = true,
-  showThemeToggle = false,
+  showThemeToggle = true,
 }) => {
   const mode = useSettingsStore((s) => s.readerTheme);
   const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
   const direction = language === 'ar' ? 'rtl' : 'ltr';
-  const actionsAlign = language === 'ar' ? 'flex-start' : 'flex-end';
+  const actionsJustify = language === 'ar' ? 'flex-start' : 'flex-end';
 
   const body = scroll ? (
     <ScrollView
@@ -40,11 +40,6 @@ export const Screen: React.FC<Props> = ({
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      {showThemeToggle && (
-        <View style={[styles.topActionRow, { alignItems: actionsAlign }]}>
-          <ThemeToggleButton />
-        </View>
-      )}
       {children}
     </ScrollView>
   ) : (
@@ -59,11 +54,6 @@ export const Screen: React.FC<Props> = ({
         contentStyle,
       ]}
     >
-      {showThemeToggle && (
-        <View style={[styles.topActionRow, { alignItems: actionsAlign }]}>
-          <ThemeToggleButton />
-        </View>
-      )}
       {children}
     </View>
   );
@@ -71,6 +61,20 @@ export const Screen: React.FC<Props> = ({
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.neutral.background, direction }]}>
       <StatusBar barStyle={mode === 'dark' ? 'light-content' : 'dark-content'} />
+      {showThemeToggle && (
+        <View
+          style={[
+            styles.topActionRow,
+            {
+              justifyContent: actionsJustify,
+              paddingHorizontal: theme.spacing.md,
+              paddingTop: theme.spacing.xs,
+            },
+          ]}
+        >
+          <ThemeToggleButton />
+        </View>
+      )}
       {showDecorations && (
         <>
           <View
@@ -107,7 +111,10 @@ const styles = StyleSheet.create({
   },
   topActionRow: {
     width: '100%',
-    marginBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    zIndex: 2,
   },
   blobOne: {
     position: 'absolute',

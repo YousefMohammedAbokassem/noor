@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/navigation/types';
 import { Screen } from '@/components/ui/Screen';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppText } from '@/components/ui/AppText';
+import { useAppAlert } from '@/components/ui/AppAlertProvider';
 import { AppButton } from '@/components/ui/AppButton';
 import { AppInput } from '@/components/ui/AppInput';
 import { SwitchRow } from '@/components/ui/SwitchRow';
@@ -16,10 +18,12 @@ import { useAuthStore } from '@/state/authStore';
 import { adhanVoiceOptions, normalizeAdhanVoiceId } from '@/constants/adhan';
 import { notificationService } from '@/services/notificationService';
 import { adhanAudioService } from '@/services/adhanAudioService';
+import { exactAlarmService } from '@/services/exactAlarmService';
 import { getThemeByMode } from '@/theme';
-import { AdhanPrayerName, PrayerNotificationMode } from '@/types/models';
+import { AdhanPrayerName, PrayerNotificationMode, PrayerSettings } from '@/types/models';
 import { prayerRuntime } from '@/services/prayer/prayerRuntime';
-import { normalizeClockTimeInput } from '@/utils/time';
+import { buildManualPrayerTimesSeed, updateManualPrayerTime } from '@/services/prayer/manualTimes';
+import { parseClockTime } from '@/utils/time';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PrayerSettings'>;
 const PREVIEW_DURATION_MS = 22_000;
@@ -43,35 +47,54 @@ const highLatitudeOptions = [
   { key: 'twilight_angle', labelKey: 'prayer.highLatitudeRules.angle' },
 ] as const;
 const notificationPrayerKeys = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
+const toClockTimeDate = (value: string) => {
+  const parsed = parseClockTime(value) ?? { hour: 0, minute: 0 };
+  const nextDate = new Date();
+  nextDate.setHours(parsed.hour, parsed.minute, 0, 0);
+  return nextDate;
+};
+
+const toClockTimeValue = (value: Date) =>
+  `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`;
+
+const buildPrayerSettingsRepairReason = (patch: Partial<PrayerSettings>) => {
+  const keys = Object.keys(patch).sort();
+  return keys.length > 0 ? `prayer_settings:${keys.join(',')}` : 'prayer_settings:unknown';
+};
 
 export const PrayerSettingsScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
+  const { showAlert } = useAppAlert();
   const settings = useSettingsStore((s) => s.prayerSettings);
-  const adhanTestSchedule = useSettingsStore((s) => s.adhanTestSchedule);
   const setPrayerSettings = useSettingsStore((s) => s.setPrayerSettings);
-  const setAdhanTestSchedule = useSettingsStore((s) => s.setAdhanTestSchedule);
   const mode = useSettingsStore((s) => s.readerTheme);
   const runtimeHealth = usePrayerStore((s) => s.runtimeHealth);
+  const prayerTimes = usePrayerStore((s) => s.prayerTimes);
   const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
   const selectedVoiceId = normalizeAdhanVoiceId(settings.adhanVoice);
   const [hijriOffset, setHijriOffset] = useState(String(settings.hijriOffset));
   const [previewingVoiceId, setPreviewingVoiceId] = useState<typeof settings.adhanVoice | null>(null);
-  const [adhanTestTimeDrafts, setAdhanTestTimeDrafts] = useState<Record<AdhanPrayerName, string>>(
-    adhanTestSchedule.times,
+  const [activeTimePickerPrayer, setActiveTimePickerPrayer] = useState<AdhanPrayerName | null>(null);
+  const manualPrayerTimes = React.useMemo(
+    () =>
+      buildManualPrayerTimesSeed(
+        settings.timeMode === 'manual' ? undefined : prayerTimes,
+        settings.manualPrayerTimes,
+      ),
+    [prayerTimes, settings.manualPrayerTimes, settings.timeMode],
   );
-  const [adhanTestTimeErrors, setAdhanTestTimeErrors] = useState<Partial<Record<AdhanPrayerName, string>>>({});
+  const [pickerTime, setPickerTime] = useState(() => toClockTimeDate(manualPrayerTimes.fajr));
   const previewingVoiceRef = useRef<typeof settings.adhanVoice | null>(null);
 
   useEffect(() => {
     if (settings.adhanVoice === selectedVoiceId) return;
-    setPrayerSettings({ adhanVoice: selectedVoiceId });
-  }, [selectedVoiceId, setPrayerSettings, settings.adhanVoice]);
-
-  useEffect(() => {
-    setAdhanTestTimeDrafts(adhanTestSchedule.times);
-  }, [adhanTestSchedule.times]);
+    void prayerRuntime.updatePrayerSettings(
+      { adhanVoice: selectedVoiceId },
+      'prayer_settings:normalize_adhan_voice',
+    );
+  }, [selectedVoiceId, settings.adhanVoice]);
 
   const setPreviewState = useCallback((voiceId: typeof settings.adhanVoice | null) => {
     previewingVoiceRef.current = voiceId;
@@ -79,97 +102,86 @@ export const PrayerSettingsScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const applyPrayerPatch = useCallback((patch: Partial<typeof settings>) => {
-    setPrayerSettings(patch);
-  }, [setPrayerSettings]);
-
-  const setAdhanTestError = useCallback((prayer: AdhanPrayerName, error?: string) => {
-    setAdhanTestTimeErrors((current) => ({
-      ...current,
-      [prayer]: error,
-    }));
+    void prayerRuntime.updatePrayerSettings(patch, buildPrayerSettingsRepairReason(patch));
   }, []);
 
-  const normalizeAdhanTestDraft = useCallback((prayer: AdhanPrayerName) => {
-    const normalized = normalizeClockTimeInput(adhanTestTimeDrafts[prayer] ?? '');
-    if (!normalized) {
-      setAdhanTestError(prayer, t('prayer.testScheduleInvalid'));
-      return null;
-    }
+  const closeTimePicker = useCallback(() => {
+    setActiveTimePickerPrayer(null);
+  }, []);
 
-    setAdhanTestTimeDrafts((current) => ({
-      ...current,
-      [prayer]: normalized,
-    }));
-    setAdhanTestError(prayer, undefined);
-    return normalized;
-  }, [adhanTestTimeDrafts, setAdhanTestError, t]);
+  const enableManualTimeMode = useCallback(async () => {
+    const seededTimes = buildManualPrayerTimesSeed(prayerTimes, settings.manualPrayerTimes);
+    await prayerRuntime.updatePrayerSettings(
+      {
+        timeMode: 'manual',
+        manualPrayerTimes: seededTimes,
+      },
+      'prayer_time_mode:manual',
+    );
+  }, [prayerTimes, settings.manualPrayerTimes]);
 
-  const applyAdhanTestSchedule = useCallback(async () => {
-    const nextTimes = {} as Record<AdhanPrayerName, string>;
-    let hasInvalidTime = false;
+  const disableManualTimeMode = useCallback(async () => {
+    closeTimePicker();
+    await prayerRuntime.updatePrayerSettings({ timeMode: 'auto' }, 'prayer_time_mode:auto');
+  }, [closeTimePicker]);
 
-    for (const prayer of notificationPrayerKeys) {
-      const normalized = normalizeClockTimeInput(adhanTestTimeDrafts[prayer] ?? adhanTestSchedule.times[prayer]);
-      if (!normalized) {
-        hasInvalidTime = true;
-        setAdhanTestError(prayer, t('prayer.testScheduleInvalid'));
-        continue;
-      }
+  const commitManualPrayerTime = useCallback(async (prayer: AdhanPrayerName, nextTime: string) => {
+    await prayerRuntime.updatePrayerSettings(
+      {
+        timeMode: 'manual',
+        manualPrayerTimes: updateManualPrayerTime(manualPrayerTimes, prayer, nextTime),
+      },
+      'manual_prayer_times_changed',
+    );
+  }, [manualPrayerTimes]);
 
-      nextTimes[prayer] = normalized;
-    }
-
-    if (hasInvalidTime) {
-      Alert.alert(t('common.error'), t('prayer.testScheduleInvalid'));
+  const openTimePicker = useCallback((prayer: AdhanPrayerName) => {
+    if (settings.timeMode !== 'manual') {
       return;
     }
+    setPickerTime(toClockTimeDate(manualPrayerTimes[prayer]));
+    setActiveTimePickerPrayer(prayer);
+  }, [manualPrayerTimes, settings.timeMode]);
 
-    setAdhanTestTimeDrafts(nextTimes);
-    setAdhanTestTimeErrors({});
-    setAdhanTestSchedule({ times: nextTimes });
-    await prayerRuntime.requestRepair('adhan_test_schedule_changed', {
-      allowLocationRefresh: settings.locationMode !== 'manual',
-      forceNotificationResync: true,
-    });
-    Alert.alert(t('common.done'), t('prayer.testScheduleSaved'));
-  }, [
-    adhanTestSchedule.times,
-    adhanTestTimeDrafts,
-    setAdhanTestError,
-    setAdhanTestSchedule,
-    settings.locationMode,
-    t,
-  ]);
+  const confirmPickedTime = useCallback(async () => {
+    if (!activeTimePickerPrayer) return;
+    const nextTime = toClockTimeValue(pickerTime);
+    closeTimePicker();
+    await commitManualPrayerTime(activeTimePickerPrayer, nextTime);
+  }, [activeTimePickerPrayer, closeTimePicker, commitManualPrayerTime, pickerTime]);
 
-  const toggleAdhanTestSchedule = useCallback((value: boolean) => {
-    setAdhanTestSchedule({ enabled: value });
-    void prayerRuntime.requestRepair('adhan_test_schedule_toggled', {
-      allowLocationRefresh: settings.locationMode !== 'manual',
-      forceNotificationResync: true,
-    });
-  }, [setAdhanTestSchedule, settings.locationMode]);
+  const commitHijriOffset = useCallback(() => {
+    applyPrayerPatch({ hijriOffset: Number(hijriOffset) || 0 });
+  }, [applyPrayerPatch, hijriOffset]);
 
   const syncAdhan = async () => {
     const granted = await notificationService.getPermissionStatus();
     if (!granted) {
       const requested = await notificationService.requestPermission();
       if (!requested) {
-        Alert.alert(t('common.error'), t('prayer.runtimeIssues.notification_permission_missing'));
+        showAlert(t('common.error'), t('prayer.runtimeIssues.notification_permission_missing'));
         return;
       }
     }
 
     await prayerRuntime.requestRepair('manual_repair', {
-      allowLocationRefresh: settings.locationMode !== 'manual',
+      allowLocationRefresh: true,
       forceNotificationResync: true,
     });
-    Alert.alert(t('common.done'), t('prayer.adhanSynced'));
+    showAlert(t('common.done'), t('prayer.adhanSynced'));
   };
 
   const stopPreview = useCallback(async () => {
     setPreviewState(null);
     await adhanAudioService.stop();
   }, [setPreviewState]);
+
+  const openExactAlarmSettings = useCallback(async () => {
+    const opened = await exactAlarmService.openSettings();
+    if (!opened) {
+      showAlert(t('common.error'), t('prayer.androidExactAlarmUnavailable'));
+    }
+  }, [showAlert, t]);
 
   const togglePreview = useCallback(async (voiceId: typeof settings.adhanVoice) => {
     if (previewingVoiceRef.current === voiceId) {
@@ -188,13 +200,13 @@ export const PrayerSettingsScreen: React.FC<Props> = ({ navigation }) => {
     });
 
     if (!ok) {
-      Alert.alert(t('common.error'), t('prayer.previewFailed'));
+      showAlert(t('common.error'), t('prayer.previewFailed'));
       setPreviewState(null);
       return;
     }
 
     setPreviewState(voiceId);
-  }, [setPreviewState, stopPreview, t]);
+  }, [setPreviewState, showAlert, stopPreview, t]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
@@ -211,7 +223,7 @@ export const PrayerSettingsScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
       <AppCard style={styles.sectionCard}>
         <AppText variant="headingSm">{t('prayer.reliabilityTitle')}</AppText>
         <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
@@ -243,39 +255,36 @@ export const PrayerSettingsScreen: React.FC<Props> = ({ navigation }) => {
         )}
       </AppCard>
 
+      {Platform.OS === 'android' && settings.notificationMode !== 'silent' && (
+        <AppCard style={styles.sectionCard}>
+          <AppText variant="headingSm">{t('prayer.androidExactAlarmTitle')}</AppText>
+          <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
+            {t('prayer.androidExactAlarmHint')}
+          </AppText>
+          <AppButton
+            title={t('prayer.androidExactAlarmAction')}
+            onPress={() => {
+              void openExactAlarmSettings();
+            }}
+            variant="ghost"
+          />
+        </AppCard>
+      )}
+
       <AppCard style={styles.sectionCard}>
         <AppText variant="headingSm">{t('prayer.requestLocation')}</AppText>
         <View style={styles.row}>
           <AppButton
             title={t('prayer.useCurrentLocation')}
-            variant={settings.locationMode === 'auto' ? 'primary' : 'ghost'}
+            variant="primary"
             onPress={() => {
-              applyPrayerPatch({ locationMode: 'auto' });
+              setPrayerSettings({ locationMode: 'auto' });
               navigation.navigate('PrayerLoading');
             }}
             style={{ flex: 1 }}
           />
-          <AppButton
-            title={t('prayer.manualCity')}
-            variant={settings.locationMode === 'manual' ? 'primary' : 'ghost'}
-            onPress={() => applyPrayerPatch({ locationMode: 'manual' })}
-            style={{ flex: 1 }}
-          />
         </View>
-        <View style={styles.row}>
-          <AppButton
-            title={t('prayer.manualCity')}
-            variant="secondary"
-            onPress={() => navigation.navigate('ManualCity')}
-            style={{ flex: 1 }}
-          />
-          <AppButton
-            title={t('prayer.retryLocation')}
-            variant="ghost"
-            onPress={() => navigation.navigate('PrayerLoading')}
-            style={{ flex: 1 }}
-          />
-        </View>
+        <AppButton title={t('prayer.retryLocation')} variant="ghost" onPress={() => navigation.navigate('PrayerLoading')} />
       </AppCard>
 
       <AppCard style={styles.sectionCard}>
@@ -342,7 +351,7 @@ export const PrayerSettingsScreen: React.FC<Props> = ({ navigation }) => {
               <Pressable
                 key={voice.id}
                 onPress={() => {
-                  setPrayerSettings({ adhanVoice: voice.id });
+                  applyPrayerPatch({ adhanVoice: voice.id });
                 }}
                 style={({ pressed }) => [
                   styles.voiceRow,
@@ -443,40 +452,66 @@ export const PrayerSettingsScreen: React.FC<Props> = ({ navigation }) => {
       </AppCard>
 
       <AppCard style={styles.sectionCard}>
-        <AppText variant="headingSm">{t('prayer.testScheduleTitle')}</AppText>
+        <AppText variant="headingSm">{t('prayer.timeModeTitle')}</AppText>
         <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
-          {t('prayer.testScheduleHint')}
+          {t('prayer.timeModeHint')}
         </AppText>
-        <SwitchRow
-          label={t('prayer.testScheduleEnabled')}
-          value={adhanTestSchedule.enabled}
-          onValueChange={toggleAdhanTestSchedule}
-          description={t('prayer.testScheduleLocalOnly')}
-        />
-        {notificationPrayerKeys.map((prayer) => (
-          <AppInput
-            key={prayer}
-            label={t(`prayer.names.${prayer}`)}
-            value={adhanTestTimeDrafts[prayer]}
-            onChangeText={(value) =>
-              setAdhanTestTimeDrafts((current) => ({
-                ...current,
-                [prayer]: value,
-              }))
-            }
-            onBlur={() => {
-              normalizeAdhanTestDraft(prayer);
+        <View style={styles.row}>
+          <AppButton
+            title={t('prayer.timeModeAuto')}
+            onPress={() => {
+              void disableManualTimeMode();
             }}
-            onSubmitEditing={() => {
-              normalizeAdhanTestDraft(prayer);
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="HH:mm"
-            error={adhanTestTimeErrors[prayer]}
+            variant={settings.timeMode === 'auto' ? 'primary' : 'ghost'}
+            style={{ flex: 1 }}
           />
-        ))}
-        <AppButton title={t('prayer.testScheduleApply')} onPress={() => void applyAdhanTestSchedule()} variant="secondary" />
+          <AppButton
+            title={t('prayer.timeModeManual')}
+            onPress={() => {
+              void enableManualTimeMode();
+            }}
+            variant={settings.timeMode === 'manual' ? 'primary' : 'ghost'}
+            style={{ flex: 1 }}
+          />
+        </View>
+        {settings.timeMode === 'manual' ? (
+          <>
+            <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
+              {t('prayer.manualTimesHint')}
+            </AppText>
+            {notificationPrayerKeys.map((prayer) => (
+              <Pressable
+                key={prayer}
+                onPress={() => openTimePicker(prayer)}
+                style={({ pressed }) => [
+                  styles.timePickerRow,
+                  {
+                    borderColor: theme.colors.neutral.borderStrong,
+                    backgroundColor: theme.colors.neutral.backgroundElevated,
+                    opacity: pressed ? 0.9 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.timePickerCopy}>
+                  <AppText variant="bodyLg">{t(`prayer.names.${prayer}`)}</AppText>
+                  <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
+                    {t('prayer.manualTimesTapToEdit')}
+                  </AppText>
+                </View>
+                <View style={[styles.timeChip, { backgroundColor: isDark ? theme.colors.neutral.surface : theme.colors.brand.mist }]}>
+                  <Ionicons name="time-outline" size={16} color={theme.colors.brand.softGold} />
+                  <AppText variant="headingSm" direction="ltr">
+                    {manualPrayerTimes[prayer]}
+                  </AppText>
+                </View>
+              </Pressable>
+            ))}
+          </>
+        ) : (
+          <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
+            {t('prayer.manualTimesAutoHidden')}
+          </AppText>
+        )}
       </AppCard>
 
       <AppCard style={styles.sectionCard}>
@@ -485,14 +520,63 @@ export const PrayerSettingsScreen: React.FC<Props> = ({ navigation }) => {
           keyboardType="number-pad"
           value={hijriOffset}
           onChangeText={setHijriOffset}
+          onBlur={commitHijriOffset}
+          onSubmitEditing={commitHijriOffset}
         />
-        <AppButton title={t('common.save')} onPress={() => applyPrayerPatch({ hijriOffset: Number(hijriOffset) || 0 })} />
         <SwitchRow
           label={t('prayer.preciseNotifications')}
           value={settings.preciseNotifications}
           onValueChange={(v) => applyPrayerPatch({ preciseNotifications: v })}
         />
       </AppCard>
+
+      <Modal visible={activeTimePickerPrayer !== null} transparent animationType="fade" onRequestClose={closeTimePicker}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeTimePicker} />
+          <View
+            style={[
+              styles.timePickerSheet,
+              {
+                backgroundColor: theme.colors.neutral.surface,
+                borderColor: theme.colors.neutral.borderStrong,
+              },
+            ]}
+          >
+              <View style={styles.timePickerHeader}>
+              <AppText variant="headingSm">
+                {activeTimePickerPrayer ? t(`prayer.names.${activeTimePickerPrayer}`) : t('prayer.manualTimesTitle')}
+              </AppText>
+              <Pressable
+                onPress={() => {
+                  void confirmPickedTime();
+                }}
+                style={({ pressed }) => [
+                  styles.timePickerConfirm,
+                  {
+                    backgroundColor: theme.colors.brand.lightGreen,
+                    opacity: pressed ? 0.9 : 1,
+                  },
+                ]}
+              >
+                <Ionicons name="checkmark" size={18} color={theme.colors.brand.darkGreen} />
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={pickerTime}
+              mode="time"
+              display="spinner"
+              is24Hour
+              minuteInterval={1}
+              themeVariant={isDark ? 'dark' : 'light'}
+              onChange={(_, nextValue) => {
+                if (nextValue) {
+                  setPickerTime(nextValue);
+                }
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 };
@@ -549,5 +633,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     gap: 4,
+  },
+  timePickerRow: {
+    minHeight: 60,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  timePickerCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  timeChip: {
+    minWidth: 98,
+    minHeight: 40,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.36)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  timePickerSheet: {
+    width: '100%',
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 16,
+    gap: 10,
+  },
+  timePickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  timePickerConfirm: {
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

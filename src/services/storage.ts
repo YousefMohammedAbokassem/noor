@@ -8,6 +8,7 @@ const KEYS = {
   authStore: 'noor.auth.store.secure',
   deviceId: 'noor.device.id.secure',
   syncQueue: 'noor.sync.queue',
+  installMarker: 'noor.app.install.marker',
 } as const;
 
 const secureStoreOptions: SecureStore.SecureStoreOptions = {

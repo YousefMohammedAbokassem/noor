@@ -16,7 +16,7 @@ type KhatmaStore = {
     durationDays?: number;
     dailyPages?: number;
   }) => void;
-  completeDailyWird: () => void;
+  completeDailyWird: () => 'idle' | 'advanced' | 'completed';
   updateReadingProgress: (page: number, surah: number, juz: number) => void;
   addBookmark: (page: number, surah: number, title?: string) => void;
   togglePinnedMarker: (input: { page: number; surah: number; verse: number; title?: string }) => void;
@@ -83,7 +83,7 @@ export const useKhatmaStore = create<KhatmaStore>()(
       },
       completeDailyWird: () => {
         const current = get().activeKhatma;
-        if (!current) return;
+        if (!current || current.status === 'completed') return 'idle';
         const now = buildNowIso();
 
         const nextPage = Math.min(TOTAL_QURAN_PAGES, current.currentPage + current.dailyPages);
@@ -116,6 +116,7 @@ export const useKhatmaStore = create<KhatmaStore>()(
             readingProgressUpdatedAt: now,
           },
         });
+        return nextPage >= current.endPage ? 'completed' : 'advanced';
       },
       updateReadingProgress: (page, surah, juz) => {
         const now = buildNowIso();

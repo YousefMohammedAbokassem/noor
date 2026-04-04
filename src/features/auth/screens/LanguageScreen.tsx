@@ -27,9 +27,9 @@ export const LanguageScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
       <View style={styles.hero}>
-        <Image source={require('../../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../../../assets/onboarding-hero.webp')} style={styles.heroImage} resizeMode="contain" />
         <AppText variant="headingLg" style={{ textAlign: 'center' }}>
           {t('language.title')}
         </AppText>
@@ -63,7 +63,7 @@ export const LanguageScreen: React.FC<Props> = ({ navigation }) => {
         onPress={() => {
           auth.completeOnboarding();
           if (auth.isAuthenticated || auth.isGuest) {
-            navigation.replace('MainTabs');
+            navigation.replace('PermissionGate', { nextRoute: 'MainTabs' });
             return;
           }
           navigation.replace('Onboarding');
@@ -84,10 +84,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
   },
-  logo: {
-    width: 152,
-    height: 82,
-    marginBottom: 10,
+  heroImage: {
+    width: 236,
+    height: 236,
+    marginBottom: 2,
   },
   actions: {
     flexDirection: 'row',

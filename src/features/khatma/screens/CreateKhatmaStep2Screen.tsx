@@ -52,9 +52,9 @@ export const CreateKhatmaStep2Screen: React.FC<Props> = ({ route, navigation }) 
   };
 
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
       <View style={styles.hero}>
-        <Image source={require('../../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../../../assets/logo.webp')} style={styles.logo} resizeMode="contain" />
         <AppText variant="headingMd" style={{ textAlign: 'center' }}>
           {t('khatma.planPrompt')}
         </AppText>
@@ -150,8 +150,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   logo: {
-    width: 122,
-    height: 66,
+    width: 96,
+    height: 96,
   },
   modeRow: {
     flexDirection: 'row',

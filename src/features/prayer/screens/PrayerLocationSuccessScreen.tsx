@@ -19,10 +19,10 @@ export const PrayerLocationSuccessScreen: React.FC<Props> = ({ navigation }) => 
   const city = prayerSettings.city || prayerSettings.country || t('prayer.noCity');
 
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
       <View style={styles.heroWrap}>
         <View style={[styles.heroCircle, { backgroundColor: theme.colors.neutral.surfaceAlt }]}>
-          <Image source={require('../../../../assets/prayer-success.png')} style={styles.heroImage} resizeMode="contain" />
+          <Image source={require('../../../../assets/prayer-success.webp')} style={styles.heroImage} resizeMode="contain" />
         </View>
       </View>
 
@@ -40,7 +40,10 @@ export const PrayerLocationSuccessScreen: React.FC<Props> = ({ navigation }) => 
       </View>
 
       <View style={styles.actions}>
-        <AppButton title={t('common.continue')} onPress={() => navigation.replace('MainTabs')} />
+        <AppButton
+          title={t('common.continue')}
+          onPress={() => navigation.replace('PermissionGate', { nextRoute: 'MainTabs' })}
+        />
       </View>
     </Screen>
   );

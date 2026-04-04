@@ -3,6 +3,8 @@
     "name": "NOOR AL-HAYAH",
     "slug": "noor-al-hayah",
     "version": "1.0.0",
+    "jsEngine": "hermes",
+    "newArchEnabled": true,
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "automatic",
@@ -29,18 +31,26 @@
         "foregroundImage": "./assets/app-adaptive-foreground.png",
         "backgroundColor": "#0D3B2E"
       },
-      "versionCode": 1,
       "package": "com.nooralhayah.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "POST_NOTIFICATIONS",
         "VIBRATE",
         "SCHEDULE_EXACT_ALARM",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "plugins": [
       "expo-localization",
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true,
+          "enableBackgroundRecording": false,
+          "recordAudioAndroid": false
+        }
+      ],
       [
         "expo-secure-store",
         {
@@ -55,11 +65,25 @@
           "sounds": [
             "./assets/audio/adhan/abdul_basit_adhan.mp3",
             "./assets/audio/adhan/haram_makki_adhan.mp3",
-            "./assets/audio/adhan/haram_nabawi_adhan.mp3"
+            "./assets/audio/adhan/haram_nabawi_adhan.mp3",
+            "./assets/audio/adhan/abdul_basit_adhan_ios.caf",
+            "./assets/audio/adhan/haram_makki_adhan_ios.caf",
+            "./assets/audio/adhan/haram_nabawi_adhan_ios.caf"
           ]
         }
       ],
-      "expo-background-task"
+      "expo-background-task",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
+          }
+        }
+      ]
     ],
     "extra": {
       "apiBaseUrl": "https://api.noor-alhayah.app/api/v1",
@@ -67,6 +91,12 @@
         "projectId": "d1a989ea-8d4d-45a0-8579-2f8bed476306"
       }
     },
-    "owner": "yousef2000q"
+    "owner": "yousef2000q",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d1a989ea-8d4d-45a0-8579-2f8bed476306"
+    }
   }
 }

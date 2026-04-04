@@ -102,6 +102,7 @@ export class ScheduleRepairService {
     const issues: PrayerRuntimeIssue[] = [];
     const lang = this.settingsRepo.getLanguage();
     let settings = this.settingsRepo.getPrayerSettings();
+    const repairState = await this.prayerRepo.getRepairState();
     let locationPermissionGranted: boolean | null =
       settings.locationMode === 'auto'
         ? await locationService.getPermissionStatus().catch(() => false)
@@ -109,11 +110,6 @@ export class ScheduleRepairService {
 
     if (settings.locationMode === 'auto') {
       this.settingsRepo.setLocationGranted(locationPermissionGranted === true);
-      const deviceTimeZone = locationService.getCurrentTimeZone();
-
-      if (settings.timeZone !== deviceTimeZone) {
-        settings = this.settingsRepo.savePrayerSettings({ timeZone: deviceTimeZone });
-      }
 
       if (locationPermissionGranted) {
         if (options.allowLocationRefresh !== false) {
@@ -126,6 +122,17 @@ export class ScheduleRepairService {
           } catch (error) {
             prayerLogger.warn('Using cached auto location because live refresh failed', error);
             issues.push('using_cached_location');
+          }
+        }
+
+        if (typeof settings.latitude === 'number' && typeof settings.longitude === 'number') {
+          const coordinateTimeZone = locationService.resolveTimeZoneForCoordinates(
+            settings.latitude,
+            settings.longitude,
+          );
+
+          if (settings.timeZone !== coordinateTimeZone) {
+            settings = this.settingsRepo.savePrayerSettings({ timeZone: coordinateTimeZone });
           }
         }
       } else {
@@ -199,6 +206,14 @@ export class ScheduleRepairService {
     const permissionSnapshot = await notificationService.getPermissionSnapshot();
     let scheduledCount = 0;
     let scheduledUntil: string | undefined;
+    const clockMovedBack =
+      typeof repairState.lastRepairAt === 'string' &&
+      Number.isFinite(new Date(repairState.lastRepairAt).getTime()) &&
+      now.getTime() + 60_000 < new Date(repairState.lastRepairAt).getTime();
+    const shouldForceNotificationResync =
+      options.forceNotificationResync === true ||
+      clockMovedBack ||
+      repairState.lastKnownTimeZone !== undefined && repairState.lastKnownTimeZone !== timeZone;
 
     await notificationService.syncSupplementalNotifications({
       reminders: this.settingsRepo.getReminders(),
@@ -207,6 +222,7 @@ export class ScheduleRepairService {
     });
 
     if (!permissionSnapshot.granted) {
+      await notificationService.clearAccountScopedNotifications();
       issues.push('notification_permission_missing');
     } else if (nextDays.length > 0) {
       const adhanSchedule = await notificationService.ensureAdhanSchedule({
@@ -214,7 +230,7 @@ export class ScheduleRepairService {
         settings,
         lang,
         now,
-        force: options.forceNotificationResync === true,
+        force: shouldForceNotificationResync,
       });
       scheduledCount = adhanSchedule.scheduledCount;
       scheduledUntil = adhanSchedule.scheduledUntil;

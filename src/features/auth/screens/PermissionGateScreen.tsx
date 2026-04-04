@@ -5,17 +5,21 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { AppButton } from '@/components/ui/AppButton';
+import { InlineBackThemeBar } from '@/components/ui/InlineBackThemeBar';
 import { RootStackParamList } from '@/navigation/types';
+import { goBackSmart } from '@/navigation/goBackSmart';
 import { notificationService } from '@/services/notificationService';
 import { locationService } from '@/services/locationService';
 import { useSettingsStore } from '@/state/settingsStore';
 import { getThemeByMode } from '@/theme';
+import { prayerRuntime } from '@/services/prayer/prayerRuntime';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PermissionGate'>;
 
 export const PermissionGateScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const mode = useSettingsStore((s) => s.readerTheme);
+  const setPrayerSettings = useSettingsStore((s) => s.setPrayerSettings);
   const theme = getThemeByMode(mode);
   const [notificationGranted, setNotificationGranted] = React.useState(false);
   const [locationGranted, setLocationGranted] = React.useState(false);
@@ -54,8 +58,13 @@ export const PermissionGateScreen: React.FC<Props> = ({ navigation, route }) => 
 
   React.useEffect(() => {
     if (!allGranted) return;
+    setPrayerSettings({ locationMode: 'auto' });
+    void prayerRuntime.requestRepair('permission_gate_granted', {
+      allowLocationRefresh: true,
+      forceNotificationResync: true,
+    });
     navigation.replace(route.params.nextRoute);
-  }, [allGranted, navigation, route.params.nextRoute]);
+  }, [allGranted, navigation, route.params.nextRoute, setPrayerSettings]);
 
   const handleGrantAll = React.useCallback(async () => {
     if (isRequesting) return;
@@ -71,8 +80,19 @@ export const PermissionGateScreen: React.FC<Props> = ({ navigation, route }) => 
     }
   }, [isRequesting, locationGranted, notificationGranted, refreshStatus]);
 
+  const handleBack = React.useCallback(() => {
+    const didGoBack = goBackSmart(navigation as unknown as Parameters<typeof goBackSmart>[0]);
+    if (didGoBack) {
+      return;
+    }
+
+    navigation.navigate(route.params.nextRoute);
+  }, [navigation, route.params.nextRoute]);
+
   return (
-    <Screen scroll={false} showDecorations={false} contentStyle={styles.content}>
+    <Screen scroll={false} showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
+      <InlineBackThemeBar onBack={handleBack} />
+
       <View style={styles.header}>
         <AppText variant="headingLg" style={styles.center}>
           {t('permissionsGate.title')}

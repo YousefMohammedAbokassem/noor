@@ -32,9 +32,9 @@ export const CreateKhatmaStep1Screen: React.FC<Props> = ({ navigation }) => {
   const selectedJuz = startType === 'juz' ? juzList.find((item) => item.id === numericValue) : null;
 
   return (
-    <Screen showDecorations={false} contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
       <View style={styles.hero}>
-        <Image source={require('../../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../../../assets/logo.webp')} style={styles.logo} resizeMode="contain" />
         <AppText variant="headingMd" style={{ textAlign: 'center' }}>
           {t('khatma.startPrompt')}
         </AppText>
@@ -126,8 +126,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   logo: {
-    width: 122,
-    height: 66,
+    width: 96,
+    height: 96,
   },
   selectorCard: {
     gap: 10,

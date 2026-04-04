@@ -16,6 +16,7 @@ jest.mock('@/services/locationService', () => ({
     getPermissionStatus: jest.fn(),
     getCurrentTimeZone: jest.fn(),
     resolveAutoPrayerLocation: jest.fn(),
+    resolveTimeZoneForCoordinates: jest.fn(),
   },
 }));
 
@@ -32,6 +33,7 @@ const { locationService } = jest.requireMock('@/services/locationService') as {
     getPermissionStatus: jest.Mock;
     getCurrentTimeZone: jest.Mock;
     resolveAutoPrayerLocation: jest.Mock;
+    resolveTimeZoneForCoordinates: jest.Mock;
   };
 };
 
@@ -119,6 +121,10 @@ class InMemoryPrayerRepository {
     this.prayerDays = [...days];
   }
 
+  async getRepairState() {
+    return this.repairState;
+  }
+
   async setRepairState(patch: Record<string, unknown>) {
     this.repairState = {
       ...this.repairState,
@@ -135,6 +141,7 @@ describe('ScheduleRepairService', () => {
 
     locationService.getPermissionStatus.mockResolvedValue(true);
     locationService.getCurrentTimeZone.mockReturnValue('Asia/Damascus');
+    locationService.resolveTimeZoneForCoordinates.mockReturnValue('Asia/Damascus');
     locationService.resolveAutoPrayerLocation.mockResolvedValue({
       latitude: 33.5138,
       longitude: 36.2765,
@@ -255,6 +262,7 @@ describe('ScheduleRepairService', () => {
     });
 
     locationService.getCurrentTimeZone.mockReturnValue('Europe/Istanbul');
+    locationService.resolveTimeZoneForCoordinates.mockReturnValue('Europe/Istanbul');
     locationService.resolveAutoPrayerLocation.mockResolvedValue({
       latitude: 33.5138,
       longitude: 36.2765,
@@ -279,5 +287,32 @@ describe('ScheduleRepairService', () => {
         force: true,
       }),
     );
+  });
+
+  it('prefers the timezone derived from the saved coordinates over the simulator/device timezone', async () => {
+    const settingsRepo = new InMemorySettingsRepository({
+      locationMode: 'auto',
+      latitude: 33.5138,
+      longitude: 36.2765,
+      city: 'Damascus',
+      country: 'Syria',
+      timeZone: 'America/Los_Angeles',
+      locationLabel: 'Damascus',
+      locationUpdatedAt: '2026-03-25T03:00:00.000Z',
+      locationSource: 'gps',
+    });
+    const prayerRepo = new InMemoryPrayerRepository();
+    const service = new ScheduleRepairService(settingsRepo as never, prayerRepo as never);
+    service.setBackgroundTaskRegistered(true);
+
+    locationService.getCurrentTimeZone.mockReturnValue('America/Los_Angeles');
+    locationService.resolveTimeZoneForCoordinates.mockReturnValue('Asia/Damascus');
+
+    await service.repairNow('cached_location_timezone_fix', {
+      allowLocationRefresh: false,
+      forceNotificationResync: true,
+    });
+
+    expect(settingsRepo.settings.timeZone).toBe('Asia/Damascus');
   });
 });

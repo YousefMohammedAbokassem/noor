@@ -1,14 +1,1 @@
-{
-  "provider": "Quran Foundation",
-  "apiBaseUrl": "https://api.quran.com/api/v4",
-  "textScript": "uthmani",
-  "documentationUrl": "https://api-docs.quran.com/docs/content_apis_versioned/quran-verses-by-script/",
-  "chaptersEndpoint": "https://api.quran.com/api/v4/chapters?language=ar",
-  "generatedAt": "2026-03-21T18:40:08.356Z",
-  "totalPages": 604,
-  "totalChapters": 114,
-  "notes": [
-    "The Quran text was fetched from the official Quran Foundation API.",
-    "Chapter metadata, page numbers, and juz structure were generated during sync."
-  ]
-}
+{"provider":"Quran Foundation","apiBaseUrl":"https://api.quran.com/api/v4","textScript":"uthmani","documentationUrl":"https://api-docs.quran.com/docs/content_apis_versioned/quran-verses-by-script/","chaptersEndpoint":"https://api.quran.com/api/v4/chapters?language=ar","generatedAt":"2026-03-21T18:40:08.356Z","totalPages":604,"totalChapters":114,"notes":["The Quran text was fetched from the official Quran Foundation API.","Chapter metadata, page numbers, and juz structure were generated during sync."]}

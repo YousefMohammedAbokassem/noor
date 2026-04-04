@@ -104,6 +104,7 @@ export type PrayerHighLatitudeRule =
 
 export type PrayerNotificationMode = 'adhan_sound' | 'default_sound' | 'silent';
 export type PrayerLocationSource = 'gps' | 'manual_preset';
+export type PrayerTimeMode = 'auto' | 'manual';
 
 export type PrayerNotificationToggles = {
   fajr: boolean;
@@ -177,7 +178,15 @@ export type PrayerRuntimeHealth = {
   issues: PrayerRuntimeIssue[];
 };
 
-export type ReminderType = 'wird' | 'morning_adhkar' | 'evening_adhkar' | 'mulk' | 'kahf' | 'baqarah' | `prayer_${PrayerName}`;
+export type ReminderType =
+  | 'wird'
+  | 'daily_wird'
+  | 'morning_adhkar'
+  | 'evening_adhkar'
+  | 'mulk'
+  | 'kahf'
+  | 'baqarah'
+  | `prayer_${PrayerName}`;
 
 export type ReminderSetting = {
   id: string;
@@ -191,13 +200,11 @@ export type DhikrLoopSettings = {
   intervalMinutes: number;
 };
 
-export type AdhanTestSchedule = {
-  enabled: boolean;
-  times: Record<AdhanPrayerName, string>;
-};
+export type PrayerManualTimes = Record<AdhanPrayerName, string>;
 
 export type PrayerSettings = {
   locationMode: 'auto' | 'manual';
+  timeMode: PrayerTimeMode;
   city?: string;
   country?: string;
   countryCode?: string;
@@ -224,6 +231,7 @@ export type PrayerSettings = {
   ishaOffset: number;
   hijriOffset: number;
   preciseNotifications: boolean;
+  manualPrayerTimes: PrayerManualTimes;
   updatedAt?: string;
 };
 

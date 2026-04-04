@@ -3,12 +3,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
+import { InlineBackThemeBar } from '@/components/ui/InlineBackThemeBar';
+import { goBackSmart } from '@/navigation/goBackSmart';
 import { adhkarCategories, adhkarItems } from '@/constants/adhkar';
-import { RootStackParamList } from '@/navigation/types';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useAuthStore } from '@/state/authStore';
 import { getThemeByMode } from '@/theme';
@@ -39,7 +39,7 @@ const iconBgMap: Record<string, string> = {
 
 export const AdhkarCategoriesScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<any>();
   const mode = useSettingsStore((s) => s.readerTheme);
   const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
@@ -55,8 +55,14 @@ export const AdhkarCategoriesScreen: React.FC = () => {
     [],
   );
 
+  const goBack = () => {
+    goBackSmart(navigation);
+  };
+
   return (
-    <Screen showDecorations={false} showThemeToggle contentStyle={styles.content}>
+    <Screen showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
+      <InlineBackThemeBar onBack={goBack} />
+
       <Animated.View
         entering={FadeIn.duration(240)}
         style={[styles.hero, { backgroundColor: theme.colors.brand.darkGreen, borderColor: theme.colors.brand.green }]}

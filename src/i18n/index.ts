@@ -25,11 +25,11 @@ if (!i18n.isInitialized) {
 
 export const setLanguage = async (lang: 'ar' | 'en') => {
   await i18n.changeLanguage(lang);
-  const shouldUseRTL = lang === 'ar';
-
-  I18nManager.allowRTL(shouldUseRTL);
-  I18nManager.forceRTL(shouldUseRTL);
-  I18nManager.swapLeftAndRightInRTL(true);
+  // The app already controls layout direction explicitly per-screen/per-component.
+  // Keeping RN's global RTL mirroring enabled causes Android to double-flip layouts.
+  I18nManager.allowRTL(false);
+  I18nManager.forceRTL(false);
+  I18nManager.swapLeftAndRightInRTL(false);
 };
 
 export default i18n;
