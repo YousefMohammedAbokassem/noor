@@ -22,6 +22,13 @@ export type LoginPayload = {
   device: DeviceMeta;
 };
 
+export type GoogleLoginPayload = {
+  idToken: string;
+  preferredLanguage: 'ar' | 'en';
+  numberFormat: 'arabic' | 'english';
+  device: DeviceMeta;
+};
+
 export type RegisterPayload = {
   email: string;
   password: string;

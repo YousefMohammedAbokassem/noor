@@ -1,16 +1,15 @@
 import React from 'react';
-import { AppState, Linking, StyleSheet, View } from 'react-native';
+import { AppState, BackHandler, Linking, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { AppButton } from '@/components/ui/AppButton';
-import { InlineBackThemeBar } from '@/components/ui/InlineBackThemeBar';
 import { RootStackParamList } from '@/navigation/types';
-import { goBackSmart } from '@/navigation/goBackSmart';
 import { notificationService } from '@/services/notificationService';
 import { locationService } from '@/services/locationService';
 import { useSettingsStore } from '@/state/settingsStore';
+import { useAuthStore } from '@/state/authStore';
 import { getThemeByMode } from '@/theme';
 import { prayerRuntime } from '@/services/prayer/prayerRuntime';
 
@@ -19,8 +18,10 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PermissionGate'>;
 export const PermissionGateScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const mode = useSettingsStore((s) => s.readerTheme);
+  const language = useAuthStore((s) => s.language);
   const setPrayerSettings = useSettingsStore((s) => s.setPrayerSettings);
   const theme = getThemeByMode(mode);
+  const isRTL = language === 'ar';
   const [notificationGranted, setNotificationGranted] = React.useState(false);
   const [locationGranted, setLocationGranted] = React.useState(false);
   const [isChecking, setIsChecking] = React.useState(true);
@@ -58,13 +59,28 @@ export const PermissionGateScreen: React.FC<Props> = ({ navigation, route }) => 
 
   React.useEffect(() => {
     if (!allGranted) return;
-    setPrayerSettings({ locationMode: 'auto' });
+    setPrayerSettings({
+      locationMode: 'auto',
+      notificationMode: 'adhan_sound',
+      prayerNotifications: {
+        fajr: true,
+        dhuhr: true,
+        asr: true,
+        maghrib: true,
+        isha: true,
+      },
+    });
     void prayerRuntime.requestRepair('permission_gate_granted', {
       allowLocationRefresh: true,
       forceNotificationResync: true,
     });
     navigation.replace(route.params.nextRoute);
   }, [allGranted, navigation, route.params.nextRoute, setPrayerSettings]);
+
+  React.useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => subscription.remove();
+  }, []);
 
   const handleGrantAll = React.useCallback(async () => {
     if (isRequesting) return;
@@ -74,25 +90,28 @@ export const PermissionGateScreen: React.FC<Props> = ({ navigation, route }) => 
       const locationResult = locationGranted ? true : await locationService.requestPermission();
       setNotificationGranted(notifResult || notificationGranted);
       setLocationGranted(locationResult || locationGranted);
+
+      if (!notifResult || !locationResult) {
+        const [notificationSnapshot, locationSnapshot] = await Promise.all([
+          notificationService.getPermissionSnapshot(),
+          locationService.getPermissionSnapshot(),
+        ]);
+
+        if (
+          (!notificationSnapshot.granted && notificationSnapshot.canAskAgain === false) ||
+          (!locationSnapshot.granted && locationSnapshot.canAskAgain === false)
+        ) {
+          void Linking.openSettings();
+        }
+      }
     } finally {
       setIsRequesting(false);
       void refreshStatus();
     }
   }, [isRequesting, locationGranted, notificationGranted, refreshStatus]);
 
-  const handleBack = React.useCallback(() => {
-    const didGoBack = goBackSmart(navigation as unknown as Parameters<typeof goBackSmart>[0]);
-    if (didGoBack) {
-      return;
-    }
-
-    navigation.navigate(route.params.nextRoute);
-  }, [navigation, route.params.nextRoute]);
-
   return (
     <Screen scroll={false} showDecorations={false} showThemeToggle={false} contentStyle={styles.content}>
-      <InlineBackThemeBar onBack={handleBack} />
-
       <View style={styles.header}>
         <AppText variant="headingLg" style={styles.center}>
           {t('permissionsGate.title')}
@@ -103,14 +122,14 @@ export const PermissionGateScreen: React.FC<Props> = ({ navigation, route }) => 
       </View>
 
       <View style={styles.statusCards}>
-        <View style={[styles.card, { borderColor: theme.colors.neutral.border }]}>
+        <View style={[styles.card, isRTL && styles.rowReverse, { borderColor: theme.colors.neutral.border }]}>
           <View
             style={[
               styles.dot,
               { backgroundColor: notificationGranted ? theme.colors.neutral.success : theme.colors.neutral.warning },
             ]}
           />
-          <View style={styles.cardCopy}>
+          <View style={[styles.cardCopy, isRTL && styles.cardCopyRtl]}>
             <AppText variant="headingSm">{t('permissionsGate.notificationLabel')}</AppText>
             <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
               {notificationGranted ? t('permissionsGate.granted') : t('permissionsGate.required')}
@@ -118,14 +137,14 @@ export const PermissionGateScreen: React.FC<Props> = ({ navigation, route }) => 
           </View>
         </View>
 
-        <View style={[styles.card, { borderColor: theme.colors.neutral.border }]}>
+        <View style={[styles.card, isRTL && styles.rowReverse, { borderColor: theme.colors.neutral.border }]}>
           <View
             style={[
               styles.dot,
               { backgroundColor: locationGranted ? theme.colors.neutral.success : theme.colors.neutral.warning },
             ]}
           />
-          <View style={styles.cardCopy}>
+          <View style={[styles.cardCopy, isRTL && styles.cardCopyRtl]}>
             <AppText variant="headingSm">{t('permissionsGate.locationLabel')}</AppText>
             <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
               {locationGranted ? t('permissionsGate.granted') : t('permissionsGate.required')}
@@ -181,6 +200,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
   dot: {
     width: 12,
     height: 12,
@@ -189,6 +211,9 @@ const styles = StyleSheet.create({
   cardCopy: {
     gap: 4,
     flex: 1,
+  },
+  cardCopyRtl: {
+    alignItems: 'flex-end',
   },
   actions: {
     gap: 12,

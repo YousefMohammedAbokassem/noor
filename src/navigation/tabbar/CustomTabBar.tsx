@@ -136,18 +136,16 @@ export const CustomTabBar: React.FC<Props> = ({
           },
         ]}
       >
-        <View pointerEvents="none" style={[styles.barGlow, { backgroundColor: tabBarTheme.colors.barGlow }]} />
         <View
           pointerEvents="none"
           style={[
-            styles.barInset,
+            styles.barInnerShell,
             {
-              backgroundColor: tabBarTheme.colors.barInset,
               borderColor: tabBarTheme.colors.barInsetBorder,
+              backgroundColor: tabBarTheme.colors.barInset,
             },
           ]}
         />
-        <View pointerEvents="none" style={[styles.topLine, { backgroundColor: tabBarTheme.colors.barTopLine }]} />
         <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <View style={[styles.sideGroup, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             {leftRoutes.map((route) => (
@@ -188,38 +186,18 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 22,
-    elevation: 12,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
-  barGlow: {
-    position: 'absolute',
-    top: -18,
-    left: 24,
-    right: 24,
-    height: 34,
-    borderRadius: 999,
-    opacity: 0.95,
-  },
-  barInset: {
+  barInnerShell: {
     position: 'absolute',
     top: 8,
-    left: 8,
-    right: 8,
-    bottom: 8,
+    left: 10,
+    right: 10,
+    bottom: 10,
     borderRadius: 22,
     borderWidth: 1,
-  },
-  topLine: {
-    height: 3,
-    width: 62,
-    alignSelf: 'center',
-    marginTop: 8,
-    marginBottom: 2,
-    borderRadius: 999,
-    opacity: 0.52,
   },
   row: {
     flex: 1,
@@ -227,7 +205,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   sideGroup: {
     flex: 1,

@@ -224,9 +224,13 @@ export const AppAlertProvider: React.FC<React.PropsWithChildren> = ({ children }
                 />
               </View>
 
-              <View style={styles.toastTextWrap}>
+              <View style={[styles.toastTextWrap, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                 {!!activeToast.title && (
-                  <AppText variant="label" numberOfLines={1}>
+                  <AppText
+                    variant="label"
+                    numberOfLines={1}
+                    style={{ textAlign: isRTL ? 'right' : 'left', alignSelf: isRTL ? 'flex-end' : 'flex-start' }}
+                  >
                     {activeToast.title}
                   </AppText>
                 )}
@@ -234,6 +238,7 @@ export const AppAlertProvider: React.FC<React.PropsWithChildren> = ({ children }
                   variant="bodySm"
                   color={theme.colors.neutral.textSecondary}
                   numberOfLines={3}
+                  style={{ textAlign: isRTL ? 'right' : 'left', alignSelf: isRTL ? 'flex-end' : 'flex-start' }}
                 >
                   {activeToast.message}
                 </AppText>
@@ -284,13 +289,21 @@ export const AppAlertProvider: React.FC<React.PropsWithChildren> = ({ children }
                 </AppText>
               </View>
 
-              <View style={styles.alertTextWrap}>
-                <AppText variant="headingSm">{activeAlert?.title}</AppText>
+              <View style={[styles.alertTextWrap, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                <AppText
+                  variant="headingSm"
+                  style={{ textAlign: isRTL ? 'right' : 'left', alignSelf: isRTL ? 'flex-end' : 'flex-start' }}
+                >
+                  {activeAlert?.title}
+                </AppText>
                 {!!activeAlert?.message && (
                   <AppText
                     variant="bodyMd"
                     color={theme.colors.neutral.textSecondary}
-                    style={styles.alertMessage}
+                    style={[
+                      styles.alertMessage,
+                      { textAlign: isRTL ? 'right' : 'left', alignSelf: isRTL ? 'flex-end' : 'flex-start' },
+                    ]}
                   >
                     {activeAlert.message}
                   </AppText>
@@ -300,7 +313,9 @@ export const AppAlertProvider: React.FC<React.PropsWithChildren> = ({ children }
               <View
                 style={[
                   styles.actionsWrap,
-                  activeAlert && activeAlert.actions.length <= 2 ? styles.actionsRow : styles.actionsColumn,
+                  activeAlert && activeAlert.actions.length <= 2
+                    ? { flexDirection: isRTL ? 'row-reverse' : 'row' }
+                    : styles.actionsColumn,
                 ]}
               >
                 {(activeAlert?.actions ?? []).map((action, index, actions) => {
@@ -414,9 +429,6 @@ const styles = StyleSheet.create({
   },
   actionsWrap: {
     gap: 10,
-  },
-  actionsRow: {
-    flexDirection: 'row',
   },
   actionsColumn: {
     flexDirection: 'column',

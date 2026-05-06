@@ -34,6 +34,7 @@ export const AppNavigationItem: React.FC<Props> = ({ label, hint, icon, danger =
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.item,
+        { flexDirection: isRTL ? 'row-reverse' : 'row' },
         {
           borderColor: theme.colors.neutral.border,
           backgroundColor: theme.colors.neutral.backgroundElevated,
@@ -54,7 +55,7 @@ export const AppNavigationItem: React.FC<Props> = ({ label, hint, icon, danger =
         <Ionicons name={icon} size={18} color={iconColor} />
       </View>
 
-      <View style={styles.textWrap}>
+      <View style={[styles.textWrap, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
         <AppText variant="bodyLg" color={danger ? theme.colors.neutral.danger : undefined}>
           {label}
         </AppText>
@@ -80,7 +81,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 14,
     paddingHorizontal: 10,
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },

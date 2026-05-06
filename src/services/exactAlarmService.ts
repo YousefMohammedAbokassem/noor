@@ -16,4 +16,19 @@ export const exactAlarmService = {
       return false;
     }
   },
+
+  openBatteryOptimizationSettings: async () => {
+    if (Platform.OS !== 'android') {
+      return false;
+    }
+
+    try {
+      await IntentLauncher.startActivityAsync(
+        IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS,
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  },
 };

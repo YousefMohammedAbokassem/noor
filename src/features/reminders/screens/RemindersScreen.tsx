@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
@@ -38,9 +38,11 @@ export const RemindersScreen: React.FC = () => {
   const mode = useSettingsStore((s) => s.readerTheme);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
+  const isRTL = language === 'ar';
   const [activeReminderPickerId, setActiveReminderPickerId] = useState<string | null>(null);
   const [pickerTime, setPickerTime] = useState(() => toClockTimeDate(reminders[0]?.time ?? '08:00'));
   const skipFirstAutoSyncRef = useRef(true);
+  const skipNextAutoSyncRef = useRef(false);
 
   const labels: Record<string, string> = {
     wird: t('reminders.wird'),
@@ -60,6 +62,23 @@ export const RemindersScreen: React.FC = () => {
 
     upsert(id, { time: shifted });
   };
+
+  const showReminderSyncFailure = useCallback(
+    async () => {
+      const snapshot = await notificationService.getPermissionSnapshot();
+      const message = snapshot.granted ? t('reminders.scheduleHint') : t('reminders.permissionHint');
+      const actions =
+        !snapshot.granted && snapshot.canAskAgain === false
+          ? [
+              { text: t('common.cancel'), style: 'cancel' as const },
+              { text: t('common.openSettings'), onPress: () => Linking.openSettings() },
+            ]
+          : [{ text: t('common.done') }];
+
+      showAlert(t('reminders.title'), `${t('reminders.syncFailed')}\n${message}`, actions);
+    },
+    [showAlert, t],
+  );
 
   const openReminderTimePicker = useCallback((id: string, time: string) => {
     setPickerTime(toClockTimeDate(time));
@@ -100,7 +119,7 @@ export const RemindersScreen: React.FC = () => {
     if (!hasPermission) {
       const granted = await notificationService.requestPermission();
       if (!granted) {
-        showAlert(t('reminders.title'), `${t('reminders.syncFailed')}\n${t('reminders.permissionHint')}`);
+        await showReminderSyncFailure();
         return false;
       }
     }
@@ -112,7 +131,7 @@ export const RemindersScreen: React.FC = () => {
     });
 
     if (!ok) {
-      showAlert(t('reminders.title'), `${t('reminders.syncFailed')}\n${t('reminders.permissionHint')}`);
+      await showReminderSyncFailure();
       return false;
     }
 
@@ -121,11 +140,16 @@ export const RemindersScreen: React.FC = () => {
       forceNotificationResync: false,
     });
     return true;
-  }, [dhikrLoopSettings, language, prayerSettings.locationMode, reminders, showAlert, t]);
+  }, [dhikrLoopSettings, language, prayerSettings.locationMode, reminders, showReminderSyncFailure]);
 
   useEffect(() => {
     if (skipFirstAutoSyncRef.current) {
       skipFirstAutoSyncRef.current = false;
+      return;
+    }
+
+    if (skipNextAutoSyncRef.current) {
+      skipNextAutoSyncRef.current = false;
       return;
     }
 
@@ -137,6 +161,23 @@ export const RemindersScreen: React.FC = () => {
       clearTimeout(timer);
     };
   }, [reminders, syncReminderChanges]);
+
+  const toggleReminder = async (id: string, enabled: boolean) => {
+    const currentReminder = reminders.find((item) => item.id === id);
+    if (!currentReminder) return;
+
+    const nextReminders = reminders.map((item) =>
+      item.id === id ? { ...item, enabled } : item,
+    );
+
+    skipNextAutoSyncRef.current = true;
+    upsert(id, { enabled });
+    const ok = await syncReminderChanges(nextReminders);
+    if (!ok) {
+      skipNextAutoSyncRef.current = true;
+      upsert(id, { enabled: currentReminder.enabled });
+    }
+  };
 
   const tweakDhikrLoopInterval = (deltaMinutes: number) => {
     const nextInterval = Math.min(180, Math.max(5, dhikrLoopSettings.intervalMinutes + deltaMinutes));
@@ -161,7 +202,7 @@ export const RemindersScreen: React.FC = () => {
 
     if (!ok) {
       setDhikrLoopSettings({ enabled: previousValue });
-      showAlert(t('reminders.title'), `${t('reminders.syncFailed')}\n${t('reminders.permissionHint')}`);
+      await showReminderSyncFailure();
     }
   };
 
@@ -172,13 +213,16 @@ export const RemindersScreen: React.FC = () => {
           <SwitchRow
             label={labels[item.id] ?? item.type}
             value={item.enabled}
-            onValueChange={(value) => upsert(item.id, { enabled: value })}
+            onValueChange={(value) => {
+              void toggleReminder(item.id, value);
+            }}
             description={`${t('common.today')}: ${item.time}`}
           />
           <Pressable
             onPress={() => openReminderTimePicker(item.id, item.time)}
             style={({ pressed }) => [
               styles.timePickerRow,
+              isRTL && styles.rowReverse,
               {
                 borderColor: theme.colors.neutral.borderStrong,
                 backgroundColor: theme.colors.neutral.backgroundElevated,
@@ -186,12 +230,13 @@ export const RemindersScreen: React.FC = () => {
               },
             ]}
           >
-            <View style={styles.timePickerCopy}>
+            <View style={[styles.timePickerCopy, isRTL && styles.textWrapRtl]}>
               <AppText variant="bodyLg">{t('reminders.timeField')}</AppText>
             </View>
             <View
               style={[
                 styles.timeChip,
+                isRTL && styles.rowReverse,
                 {
                   backgroundColor: isDark ? theme.colors.neutral.surface : theme.colors.brand.mist,
                 },
@@ -203,7 +248,7 @@ export const RemindersScreen: React.FC = () => {
               </AppText>
             </View>
           </Pressable>
-          <View style={styles.row}>
+          <View style={[styles.row, isRTL && styles.rowReverse]}>
             <AppButton title="- 15" variant="ghost" onPress={() => tweakTime(item.id, item.time, -15)} style={{ flex: 1 }} />
             <AppButton title="+ 15" variant="ghost" onPress={() => tweakTime(item.id, item.time, 15)} style={{ flex: 1 }} />
           </View>
@@ -217,7 +262,7 @@ export const RemindersScreen: React.FC = () => {
           onValueChange={toggleDhikrLoop}
           description={t('reminders.dhikrLoopHint', { minutes: dhikrLoopSettings.intervalMinutes })}
         />
-        <View style={styles.row}>
+        <View style={[styles.row, isRTL && styles.rowReverse]}>
           <AppButton title="- 5" variant="ghost" onPress={() => tweakDhikrLoopInterval(-5)} style={{ flex: 1 }} />
           <AppButton title="+ 5" variant="ghost" onPress={() => tweakDhikrLoopInterval(5)} style={{ flex: 1 }} />
         </View>
@@ -236,7 +281,7 @@ export const RemindersScreen: React.FC = () => {
                 },
               ]}
             >
-              <View style={styles.timePickerHeader}>
+              <View style={[styles.timePickerHeader, isRTL && styles.rowReverse]}>
                 <AppText variant="headingSm">{t('reminders.timeField')}</AppText>
                 <Pressable
                   onPress={confirmReminderTime}
@@ -292,6 +337,9 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
   },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
   timePickerRow: {
     minHeight: 60,
     borderRadius: 14,
@@ -305,6 +353,9 @@ const styles = StyleSheet.create({
   timePickerCopy: {
     flex: 1,
     gap: 2,
+  },
+  textWrapRtl: {
+    alignItems: 'flex-end',
   },
   timeChip: {
     minWidth: 98,

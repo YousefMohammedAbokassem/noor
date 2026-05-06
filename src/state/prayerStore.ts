@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PrayerRuntimeHealth, PrayerTimes } from '@/types/models';
+import { storage } from '@/services/storage';
 
 const defaultRuntimeHealth: PrayerRuntimeHealth = {
   state: 'attention',
@@ -39,7 +40,7 @@ export const usePrayerStore = create<PrayerStore>()(
         }),
     }),
     {
-      name: 'noor.prayer.store',
+      name: storage.keys.prayerStore,
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

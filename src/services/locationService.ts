@@ -61,9 +61,17 @@ export const locationService = {
       return getDeviceTimeZone();
     }
   },
+  getPermissionSnapshot: async () => {
+    const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
+    return {
+      granted: status === 'granted',
+      status,
+      canAskAgain,
+    };
+  },
   getPermissionStatus: async () => {
-    const { status } = await Location.getForegroundPermissionsAsync();
-    return status === 'granted';
+    const snapshot = await locationService.getPermissionSnapshot();
+    return snapshot.granted;
   },
   requestPermission: async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();

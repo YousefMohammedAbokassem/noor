@@ -9,6 +9,11 @@ const KEYS = {
   deviceId: 'noor.device.id.secure',
   syncQueue: 'noor.sync.queue',
   installMarker: 'noor.app.install.marker',
+  installFingerprint: 'noor.app.install.fingerprint.secure',
+  khatmaStore: 'noor.khatma.store',
+  prayerStore: 'noor.prayer.store',
+  settingsStore: 'noor.settings.store',
+  tasbeehStore: 'noor.tasbeeh.store',
 } as const;
 
 const secureStoreOptions: SecureStore.SecureStoreOptions = {

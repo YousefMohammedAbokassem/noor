@@ -27,34 +27,51 @@ const shouldAllowLocationRefreshForPatch = (patch: Partial<PrayerSettings>) =>
 
 class PrayerRuntime {
   private initialized = false;
+  private initializePromise: Promise<void> | null = null;
 
   async initialize() {
     if (this.initialized) {
       return;
     }
 
-    this.initialized = true;
-    const lang = settingsRepository.getLanguage();
-    await notificationService.prepareRuntime(lang);
-
-    try {
-      const status = await BackgroundTask.getStatusAsync();
-      if (status === BackgroundTask.BackgroundTaskStatus.Available) {
-        await BackgroundTask.registerTaskAsync(PRAYER_REPAIR_TASK_NAME, {
-          minimumInterval: BACKGROUND_INTERVAL_MINUTES,
-        });
-        scheduleRepairService.setBackgroundTaskRegistered(true);
-      } else {
-        scheduleRepairService.setBackgroundTaskRegistered(false);
-      }
-    } catch (error) {
-      scheduleRepairService.setBackgroundTaskRegistered(false);
-      prayerLogger.warn('Background repair task registration failed', error);
+    if (this.initializePromise) {
+      return this.initializePromise;
     }
 
-    await scheduleRepairService.repairNow('app_boot', {
-      allowLocationRefresh: true,
-    });
+    this.initializePromise = (async () => {
+      const lang = settingsRepository.getLanguage();
+      await notificationService.prepareRuntime(lang);
+
+      try {
+        const status = await BackgroundTask.getStatusAsync();
+        if (status === BackgroundTask.BackgroundTaskStatus.Available) {
+          await BackgroundTask.registerTaskAsync(PRAYER_REPAIR_TASK_NAME, {
+            minimumInterval: BACKGROUND_INTERVAL_MINUTES,
+          });
+          scheduleRepairService.setBackgroundTaskRegistered(true);
+        } else {
+          scheduleRepairService.setBackgroundTaskRegistered(false);
+        }
+      } catch (error) {
+        scheduleRepairService.setBackgroundTaskRegistered(false);
+        prayerLogger.warn('Background repair task registration failed', error);
+      }
+
+      await scheduleRepairService.repairNow('app_boot', {
+        allowLocationRefresh: false,
+        forceNotificationResync: false,
+      });
+
+      this.initialized = true;
+    })();
+
+    try {
+      await this.initializePromise;
+    } catch (error) {
+      this.initializePromise = null;
+      this.initialized = false;
+      throw error;
+    }
   }
 
   requestRepair(reason: string, options?: { allowLocationRefresh?: boolean; forceNotificationResync?: boolean }) {

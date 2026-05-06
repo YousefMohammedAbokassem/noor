@@ -17,6 +17,7 @@ export const surahList = quranChapterSummaries.map((chapter) => ({
   translatedName: chapter.translatedName,
   revelationPlace: chapter.revelationPlace,
   versesCount: chapter.versesCount,
+  bismillahPre: chapter.bismillahPre,
   startPage: chapter.startPage,
   endPage: chapter.endPage,
   juz: quranJuzSummaries.find(

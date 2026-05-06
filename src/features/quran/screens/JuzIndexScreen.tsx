@@ -1,21 +1,20 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/navigation/types';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
-import { AppCard } from '@/components/ui/AppCard';
-import { AppButton } from '@/components/ui/AppButton';
 import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { juzList, surahList } from '@/constants/quran';
+import { QuranIndexTabs } from '@/features/quran/components/QuranIndexTabs';
 import { QuranTopBar } from '@/features/quran/components/QuranTopBar';
 import { useKhatmaStore } from '@/state/khatmaStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useAuthStore } from '@/state/authStore';
 import { getThemeByMode } from '@/theme';
 import { useResetFlatListOnFocus } from '@/features/quran/hooks/useResetFlatListOnFocus';
+import { toArabicDigits, toEnglishDigits } from '@/utils/number';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JuzIndex'>;
 
@@ -25,60 +24,75 @@ export const JuzIndexScreen: React.FC<Props> = ({ navigation }) => {
   const pinnedMarker = useKhatmaStore((s) => s.pinnedMarker);
   const mode = useSettingsStore((s) => s.readerTheme);
   const language = useAuthStore((s) => s.language);
+  const numberFormat = useAuthStore((s) => s.numberFormat);
   const theme = getThemeByMode(mode);
-  const isDark = mode === 'dark';
   const isRTL = language === 'ar';
-  const accentColor = isDark ? theme.colors.brand.softGold : theme.colors.brand.darkGreen;
-  const juzListRef = useResetFlatListOnFocus<(typeof juzList)[number]>();
+  const accentColor = mode === 'dark' ? theme.colors.brand.softGold : theme.colors.brand.darkGreen;
+  const { listRef: juzListRef, handleScroll } = useResetFlatListOnFocus<(typeof juzList)[number]>(
+    'quran-juz-index',
+  );
   const continuePage = pinnedMarker?.page ?? reading.currentPage;
   const continueSurah =
     surahList.find((item) => item.startPage <= continuePage && item.endPage >= continuePage) ?? surahList[0];
+  const surahStartsMap = useMemo(
+    () =>
+      new Map(
+        juzList.map((juz) => [
+          juz.id,
+          surahList.filter((surah) => surah.startPage >= juz.startPage && surah.startPage <= juz.endPage).length,
+        ]),
+      ),
+    [],
+  );
+
+  const localizeNumber = (value: number) => {
+    const raw = String(value);
+    if (numberFormat === 'arabic') return toArabicDigits(raw);
+    if (numberFormat === 'english') return toEnglishDigits(raw);
+    return language === 'ar' ? toArabicDigits(raw) : toEnglishDigits(raw);
+  };
 
   return (
     <Screen scroll={false} showDecorations={false} showThemeToggle={false} contentStyle={styles.screen}>
       <QuranTopBar
         title={t('quran.juzIndex')}
-        subtitle={t('quran.juzIndexSubtitle')}
         onBack={() => navigation.goBack()}
-        rightSlot={
-          <View style={styles.topActions}>
-            <View style={[styles.counterBadge, { backgroundColor: theme.colors.brand.mist }]}>
-              <AppText variant="bodySm" color={accentColor}>
-                30
-              </AppText>
-            </View>
-            <ThemeToggleButton compact />
-          </View>
-        }
+        rightSlot={<ThemeToggleButton compact />}
       />
 
-      <AppCard style={styles.heroCard}>
-        <Ionicons name="layers-outline" size={28} color={accentColor} />
-        <AppText variant="headingLg">{t('quran.juzIndex')}</AppText>
-        <AppText variant="bodyMd" color={theme.colors.neutral.textSecondary}>
-          {t('quran.juzHeroDescription')}
-        </AppText>
-        <View style={styles.heroActions}>
-          <AppButton
-            title={t('home.continueReading')}
-            variant="secondary"
-            onPress={() =>
-              navigation.navigate('QuranReader', {
-                page: continuePage,
-                surah: continueSurah.id,
-                juz: continueSurah.juz,
-              })
-            }
-            style={{ flex: 1 }}
-          />
-          <AppButton
-            title={t('quran.surahIndex')}
-            variant="ghost"
-            onPress={() => navigation.navigate('SurahIndex')}
-            style={{ flex: 1 }}
-          />
+      <QuranIndexTabs
+        activeTab="juz"
+        onPressSurah={() => navigation.navigate('SurahIndex')}
+        onPressJuz={() => undefined}
+      />
+
+      <Pressable
+        onPress={() =>
+          navigation.navigate('QuranReader', {
+            page: continuePage,
+            surah: continueSurah.id,
+            juz: continueSurah.juz,
+          })
+        }
+        style={[
+          styles.continueStrip,
+          {
+            borderColor: theme.colors.neutral.border,
+            backgroundColor: theme.colors.neutral.surfaceAlt,
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+          },
+        ]}
+      >
+        <View style={styles.continueTextWrap}>
+          <AppText variant="label">{t('quran.continueFromLast')}</AppText>
+          <AppText variant="bodySm" color={theme.colors.neutral.textSecondary} numberOfLines={1}>
+            {`${language === 'ar' ? continueSurah.nameAr : continueSurah.nameEn} • ${t('quran.page')} ${continuePage}`}
+          </AppText>
         </View>
-      </AppCard>
+        <AppText variant="label" color={theme.colors.neutral.textSecondary}>
+          30
+        </AppText>
+      </Pressable>
 
       <FlatList
         ref={juzListRef}
@@ -87,28 +101,40 @@ export const JuzIndexScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.list}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         renderItem={({ item }) => (
           <Pressable onPress={() => navigation.navigate('QuranReader', { page: item.startPage, juz: item.id })}>
-            <AppCard style={styles.card}>
-              <View style={[styles.orderBadge, { backgroundColor: theme.colors.brand.mist }]}>
-                <AppText variant="label" color={accentColor}>
-                  {item.id}
-                </AppText>
-              </View>
+            {({ pressed }) => (
+              <View
+                style={[
+                  styles.row,
+                  {
+                    borderBottomColor: theme.colors.neutral.border,
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    opacity: pressed ? 0.84 : 1,
+                  },
+                ]}
+              >
+                <View style={[styles.orderBadge, { backgroundColor: theme.colors.brand.mist }]}>
+                  <AppText variant="label" color={accentColor}>
+                    {localizeNumber(item.id)}
+                  </AppText>
+                </View>
 
-              <View style={styles.cardBody}>
-                <AppText variant="headingSm">{language === 'ar' ? item.nameAr : item.nameEn}</AppText>
-                <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
-                  {t('quran.fromPageTo', { start: item.startPage, end: item.endPage })}
-                </AppText>
+                <View style={styles.rowBody}>
+                  <AppText variant="headingSm" style={{ textAlign: isRTL ? 'right' : 'left' }}>
+                    {language === 'ar' ? item.nameAr : item.nameEn}
+                  </AppText>
+                  <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
+                    {t('quran.fromPageTo', { start: item.startPage, end: item.endPage })}
+                  </AppText>
+                  <AppText variant="bodySm" color={accentColor}>
+                    {t('quran.surahStartsCount', { count: surahStartsMap.get(item.id) ?? 0 })}
+                  </AppText>
+                </View>
               </View>
-
-              <Ionicons
-                name={isRTL ? 'chevron-back' : 'chevron-forward'}
-                size={20}
-                color={accentColor}
-              />
-            </AppCard>
+            )}
           </Pressable>
         )}
       />
@@ -119,26 +145,20 @@ export const JuzIndexScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    gap: 14,
+    gap: 10,
   },
-  counterBadge: {
-    minWidth: 40,
-    height: 40,
-    borderRadius: 20,
+  continueStrip: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: 18,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  heroCard: {
+    justifyContent: 'space-between',
     gap: 12,
+    paddingHorizontal: 14,
   },
-  heroActions: {
-    flexDirection: 'row',
-    gap: 8,
+  continueTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   list: {
     flex: 1,
@@ -146,20 +166,23 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 24,
   },
-  card: {
-    marginBottom: 10,
-    flexDirection: 'row',
+  row: {
+    minHeight: 78,
     alignItems: 'center',
     gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 10,
   },
   orderBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardBody: {
+  rowBody: {
     flex: 1,
+    minWidth: 0,
+    gap: 3,
   },
 });

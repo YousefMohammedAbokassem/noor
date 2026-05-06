@@ -8,6 +8,7 @@ jest.mock('@/services/notificationService', () => ({
     getPermissionSnapshot: jest.fn(),
     syncSupplementalNotifications: jest.fn(),
     ensureAdhanSchedule: jest.fn(),
+    clearAccountScopedNotifications: jest.fn(),
   },
 }));
 
@@ -25,6 +26,7 @@ const { notificationService } = jest.requireMock('@/services/notificationService
     getPermissionSnapshot: jest.Mock;
     syncSupplementalNotifications: jest.Mock;
     ensureAdhanSchedule: jest.Mock;
+    clearAccountScopedNotifications: jest.Mock;
   };
 };
 
@@ -165,6 +167,7 @@ describe('ScheduleRepairService', () => {
       scheduledUntil: '2026-04-23',
       truncated: false,
     });
+    notificationService.clearAccountScopedNotifications.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -314,5 +317,38 @@ describe('ScheduleRepairService', () => {
     });
 
     expect(settingsRepo.settings.timeZone).toBe('Asia/Damascus');
+  });
+
+  it('clears scheduled notifications and reports attention when notification permission is disabled', async () => {
+    const settingsRepo = new InMemorySettingsRepository({
+      locationMode: 'manual',
+      latitude: 33.5138,
+      longitude: 36.2765,
+      city: 'Damascus',
+      country: 'Syria',
+      timeZone: 'Asia/Damascus',
+      locationLabel: 'Damascus',
+    });
+    const prayerRepo = new InMemoryPrayerRepository();
+    const service = new ScheduleRepairService(settingsRepo as never, prayerRepo as never);
+    service.setBackgroundTaskRegistered(true);
+
+    notificationService.getPermissionSnapshot.mockResolvedValue({
+      granted: false,
+      status: 'denied',
+      canAskAgain: false,
+    });
+
+    const health = await service.repairNow('notification_permission_revoked', {
+      allowLocationRefresh: false,
+      forceNotificationResync: true,
+    });
+
+    expect(notificationService.clearAccountScopedNotifications).toHaveBeenCalledTimes(1);
+    expect(notificationService.syncSupplementalNotifications).not.toHaveBeenCalled();
+    expect(notificationService.ensureAdhanSchedule).not.toHaveBeenCalled();
+    expect(health.notificationPermissionGranted).toBe(false);
+    expect(health.issues).toContain('notification_permission_missing');
+    expect(health.state).toBe('attention');
   });
 });

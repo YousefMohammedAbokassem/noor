@@ -1,4 +1,20 @@
-export const supportedCities = [
+import { PrayerCalculationMethod } from '@/types/models';
+
+type SupportedCity = {
+  id: string;
+  cityAr: string;
+  cityEn: string;
+  countryAr: string;
+  countryEn: string;
+  countryCode: string;
+  timeZone: string;
+  lat: number;
+  lng: number;
+  calculationMethod?: PrayerCalculationMethod;
+  asrMethod?: 'shafi' | 'hanafi';
+};
+
+export const supportedCities: SupportedCity[] = [
   {
     id: 'damascus',
     cityAr: 'دمشق',
@@ -9,6 +25,8 @@ export const supportedCities = [
     timeZone: 'Asia/Damascus',
     lat: 33.5138,
     lng: 36.2765,
+    calculationMethod: 'egyptian',
+    asrMethod: 'shafi',
   },
   {
     id: 'riyadh',

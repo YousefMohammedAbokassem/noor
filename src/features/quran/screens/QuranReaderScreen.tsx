@@ -43,8 +43,6 @@ const buildPageRange = (startPage: number, endPage: number) => {
   return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 };
 
-const shouldRenderBasmala = (surahId: number) => surahId !== 9;
-
 export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const { showToast } = useAppAlert();
@@ -206,11 +204,57 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
     : t('quran.reader');
 
   const toolbarMeta = `${t('quran.page')} ${currentPage} • ${t('quran.juz')} ${currentJuz}`;
-  const localizeVerseNumber = (value: number) => {
+  const localizeNumber = (value: number) => {
     const raw = String(value);
     if (numberFormat === 'arabic') return toArabicDigits(raw);
     if (numberFormat === 'english') return toEnglishDigits(raw);
     return language === 'ar' ? toArabicDigits(raw) : toEnglishDigits(raw);
+  };
+  const localizeVerseNumber = (value: number) => localizeNumber(value);
+  const surahById = useMemo(() => new Map(surahList.map((item) => [item.id, item])), []);
+
+  const renderSurahIntroCard = (surah: (typeof surahList)[number]) => {
+    const revelationLabel =
+      surah.revelationPlace === 'madinah' ? t('quran.revelationMadinah') : t('quran.revelationMakkah');
+
+    return (
+      <View
+        style={[
+          styles.surahIntroCard,
+          {
+            borderColor: theme.colors.neutral.borderStrong,
+            backgroundColor: isDark ? theme.colors.neutral.surfaceAlt : theme.colors.neutral.backgroundElevated,
+          },
+        ]}
+      >
+        <View style={[styles.surahIntroHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <View style={[styles.surahIntroBadge, { backgroundColor: theme.colors.brand.mist }]}>
+            <AppText variant="label" color={accentColor}>
+              {localizeNumber(surah.id)}
+            </AppText>
+          </View>
+
+          <View style={styles.surahIntroHeaderText}>
+            <AppText variant="headingSm" style={[styles.surahIntroTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+              {language === 'ar' ? `سورة ${surah.nameAr}` : surah.nameEn}
+            </AppText>
+            <AppText
+              variant="bodySm"
+              color={theme.colors.neutral.textSecondary}
+              style={[styles.surahIntroLatin, { textAlign: isRTL ? 'right' : 'left' }]}
+            >
+              {`${revelationLabel} • ${t('quran.versesCount', { count: surah.versesCount })} • ${t('quran.juz')} ${localizeNumber(surah.juz)}`}
+            </AppText>
+          </View>
+        </View>
+
+        {surah.bismillahPre ? (
+          <AppText variant="headingMd" style={[styles.basmalaText, { color: accentColor }]}>
+            {t('quran.basmalaFallback')}
+          </AppText>
+        ) : null}
+      </View>
+    );
   };
 
   return (
@@ -236,7 +280,7 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
         <View
           style={[
             styles.headerRow,
-            { flexDirection: isRTL ? 'row-reverse' : 'row' },
+            { flexDirection: isRTL ? 'row' : 'row-reverse' },
           ]}
         >
           <View style={styles.headerSide}>
@@ -276,7 +320,15 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
-        <View style={[styles.toolbarRow, { borderTopColor: theme.colors.neutral.border }]}>
+        <View
+          style={[
+            styles.toolbarRow,
+            {
+              borderTopColor: theme.colors.neutral.border,
+              flexDirection: isRTL ? 'row-reverse' : 'row',
+            },
+          ]}
+        >
           <Pressable
             onPress={goToPinnedPage}
             style={[
@@ -284,6 +336,7 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
               {
                 borderColor: theme.colors.neutral.border,
                 backgroundColor: theme.colors.neutral.surface,
+                flexDirection: isRTL ? 'row-reverse' : 'row',
               },
             ]}
           >
@@ -339,60 +392,18 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
           const pageSections = selectedSurah
             ? (pageData?.sections ?? []).filter((section) => section.chapterId === selectedSurah.id)
             : pageData?.sections ?? [];
-
-          const allVerses = pageSections.flatMap((section) => section.verses.map((verse) => ({
-            id: verse.id,
-            verseKey: verse.verseKey,
-            number: verse.number,
-            surahId: section.chapterId,
-            surahNameAr: section.chapterNameAr,
-            surahNameEn: section.chapterNameSimple,
-            text: verse.text,
-          })));
-
-          const firstVerse = allVerses[0]?.number ?? 1;
+          const firstVerse = pageSections[0]?.verses[0]?.number ?? 1;
           const markerIsActive = pinnedMarker?.page === pageNumber;
-          const isOpeningOfSelectedSurah = !!selectedSurah && pageNumber === selectedSurah.startPage;
-          const revelationLabel = selectedSurah?.revelationPlace === 'madinah'
-            ? t('quran.revelationMadinah')
-            : t('quran.revelationMakkah');
 
           return (
             <View style={styles.pageSection}>
-              {isOpeningOfSelectedSurah && selectedSurah ? (
-                <View
-                  style={[
-                    styles.surahIntroCard,
-                    {
-                      borderColor: theme.colors.neutral.borderStrong,
-                      backgroundColor: isDark ? theme.colors.neutral.surfaceAlt : theme.colors.neutral.backgroundElevated,
-                    },
-                  ]}
-                >
-                  <AppText variant="headingSm" style={styles.surahIntroTitle}>
-                    {selectedSurah.nameAr}
-                  </AppText>
-                  <AppText variant="bodySm" color={theme.colors.neutral.textSecondary} style={styles.surahIntroLatin}>
-                    {selectedSurah.nameEn}
-                  </AppText>
-                  <View style={[styles.surahIntroDivider, { backgroundColor: theme.colors.neutral.border }]} />
-                  <AppText variant="bodySm" color={theme.colors.neutral.textSecondary} style={styles.surahIntroMeta}>
-                    {`${revelationLabel} • ${t('quran.versesCount', { count: selectedSurah.versesCount })} • ${t('quran.juz')} ${selectedSurah.juz}`}
-                  </AppText>
-                  {shouldRenderBasmala(selectedSurah.id) && (
-                    <AppText variant="headingMd" style={[styles.basmalaText, { color: accentColor }]}>
-                      {t('quran.basmalaFallback')}
-                    </AppText>
-                  )}
-                </View>
-              ) : null}
-
               <View
                 style={[
                   styles.pageStrip,
                   {
                     borderColor: theme.colors.neutral.border,
                     backgroundColor: isDark ? theme.colors.neutral.surface : theme.colors.neutral.backgroundElevated,
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
                   },
                 ]}
               >
@@ -405,7 +416,10 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
                       title: language === 'ar' ? pageSurah.nameAr : pageSurah.nameEn,
                     })
                   }
-                  style={[styles.stripSide, styles.stripSideLeading]}
+                  style={[
+                    styles.stripSide,
+                    isRTL ? styles.stripSideLeadingRtl : styles.stripSideLeadingLtr,
+                  ]}
                 >
                   <View style={styles.stripIconButton}>
                     <Ionicons
@@ -446,40 +460,62 @@ export const QuranReaderScreen: React.FC<Props> = ({ navigation, route }) => {
                 </View>
               </View>
 
-              {allVerses.length ? (
-                <View style={styles.quranTextWrap}>
-                  <Text
-                    allowFontScaling={false}
-                    textBreakStrategy="simple"
-                    lineBreakStrategyIOS="standard"
-                    android_hyphenationFrequency="none"
-                    style={[
-                      styles.quranFlowText,
-                      styles.quranFlowArabic,
-                      {
-                        color: theme.colors.neutral.textPrimary,
-                      },
-                    ]}
-                    >
-                      {allVerses.map((ayah, index) => {
-                        return (
-                          <Text key={`${pageNumber}-${ayah.verseKey}-${index}`}>
-                            {ayah.text}
-                            <Text
-                              style={[
-                                styles.verseOrnament,
-                                {
-                                  color: accentColor,
-                                },
-                              ]}
-                            >
-                              {` ﴿${localizeVerseNumber(ayah.number)}﴾`}
-                            </Text>
-                            {index < allVerses.length - 1 ? ' ' : ''}
+              {pageSections.some((section) => section.verses.length > 0) ? (
+                <View style={styles.pageContentStack}>
+                  {pageSections.map((section, sectionIndex) => {
+                    const sectionSurah = surahById.get(section.chapterId);
+                    const isOpening =
+                      !!sectionSurah &&
+                      section.verses[0]?.number === 1 &&
+                      sectionSurah.startPage === pageNumber;
+                    const sectionVerses = section.verses.map((verse) => ({
+                      id: verse.id,
+                      verseKey: verse.verseKey,
+                      number: verse.number,
+                      surahId: section.chapterId,
+                      surahNameAr: section.chapterNameAr,
+                      surahNameEn: section.chapterNameSimple,
+                      text: verse.text,
+                    })) as ReaderVerse[];
+
+                    return (
+                      <View key={`${pageNumber}-${section.chapterId}-${sectionIndex}`} style={styles.sectionBlock}>
+                        {isOpening && sectionSurah ? renderSurahIntroCard(sectionSurah) : null}
+                        <View style={styles.quranTextWrap}>
+                          <Text
+                            allowFontScaling={false}
+                            textBreakStrategy="simple"
+                            lineBreakStrategyIOS="standard"
+                            android_hyphenationFrequency="none"
+                            style={[
+                              styles.quranFlowText,
+                              styles.quranFlowArabic,
+                              {
+                                color: theme.colors.neutral.textPrimary,
+                              },
+                            ]}
+                          >
+                            {sectionVerses.map((ayah, index) => (
+                              <Text key={`${pageNumber}-${ayah.verseKey}-${index}`}>
+                                {ayah.text}
+                                <Text
+                                  style={[
+                                    styles.verseOrnament,
+                                    {
+                                      color: accentColor,
+                                    },
+                                  ]}
+                                >
+                                  {` ﴿${localizeVerseNumber(ayah.number)}﴾`}
+                                </Text>
+                                {index < sectionVerses.length - 1 ? ' ' : ''}
+                              </Text>
+                            ))}
                           </Text>
-                        );
-                    })}
-                  </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
               ) : (
                 <AppText variant="bodyMd" color={theme.colors.neutral.textSecondary} style={styles.emptyPageText}>
@@ -576,28 +612,33 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 13,
-    alignItems: 'center',
     marginBottom: 9,
     marginHorizontal: 6,
-    gap: 4,
+    gap: 8,
+  },
+  surahIntroHeader: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  surahIntroBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  surahIntroHeaderText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 3,
   },
   surahIntroTitle: {
-    textAlign: 'center',
+    lineHeight: 24,
   },
   surahIntroLatin: {
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  surahIntroDivider: {
-    height: 1,
-    width: '76%',
-    marginVertical: 2,
-  },
-  surahIntroMeta: {
-    textAlign: 'center',
+    lineHeight: 19,
   },
   basmalaText: {
-    marginTop: 2,
     textAlign: 'center',
     lineHeight: 42,
   },
@@ -618,6 +659,12 @@ const styles = StyleSheet.create({
   },
   stripSideLeading: {
     alignItems: 'flex-start',
+  },
+  stripSideLeadingLtr: {
+    alignItems: 'flex-start',
+  },
+  stripSideLeadingRtl: {
+    alignItems: 'flex-end',
   },
   stripCenter: {
     flex: 1,
@@ -650,6 +697,12 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch',
     paddingHorizontal: 6,
+  },
+  pageContentStack: {
+    gap: 6,
+  },
+  sectionBlock: {
+    gap: 4,
   },
   quranFlowText: {
     textAlign: 'justify',

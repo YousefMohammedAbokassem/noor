@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -157,7 +157,11 @@ export const HomeWirdScreen: React.FC = () => {
     ? `${t('prayer.nextPrayer')}: ${nextPrayerLabel} • ${nextPrayerTime}`
     : t('home.noPrayerTimesHint');
   const locale = language === 'ar' ? 'ar-SA' : 'en-US';
-  const pagesRemaining = khatma ? Math.max(0, khatma.endPage - khatma.currentPage) : Math.max(0, TOTAL_QURAN_PAGES - continuePage);
+  const pagesRemaining = khatma
+    ? khatma.status === 'completed'
+      ? 0
+      : Math.max(0, khatma.endPage - khatma.currentPage + 1)
+    : Math.max(0, TOTAL_QURAN_PAGES - continuePage + 1);
 
   useFocusEffect(
     useCallback(() => {
@@ -252,6 +256,38 @@ export const HomeWirdScreen: React.FC = () => {
       'home_quick_manual_prayer_time_changed',
     );
   }, [activeTimePickerPrayer, buildManualAdhanTimes, closeTimePicker, pickerTime]);
+
+  const handleAndroidQuickTimePickerChange = useCallback(
+    async (event: { type?: string }, nextValue?: Date) => {
+      if (!activeTimePickerPrayer) {
+        return;
+      }
+
+      if (event.type === 'dismissed') {
+        closeTimePicker();
+        return;
+      }
+
+      const chosenValue = nextValue ?? pickerTime;
+      setPickerTime(chosenValue);
+      closeTimePicker();
+
+      const nextTimes = updateManualPrayerTime(
+        buildManualAdhanTimes(),
+        activeTimePickerPrayer,
+        toClockTimeValue(chosenValue),
+      );
+
+      await prayerRuntime.updatePrayerSettings(
+        {
+          timeMode: 'manual',
+          manualPrayerTimes: nextTimes,
+        },
+        'home_quick_manual_prayer_time_changed',
+      );
+    },
+    [activeTimePickerPrayer, buildManualAdhanTimes, closeTimePicker, pickerTime],
+  );
 
   const handleManualTimingPress = useCallback(() => {
     if (prayerSettings.timeMode === 'manual') {
@@ -819,53 +855,65 @@ export const HomeWirdScreen: React.FC = () => {
           </Pressable>
         </View>
 
-        <Modal visible={activeTimePickerPrayer !== null} transparent animationType="fade" onRequestClose={closeTimePicker}>
-          <View style={styles.modalOverlay}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={closeTimePicker} />
-            <View
-              style={[
-                styles.timePickerSheet,
-                {
-                  backgroundColor: theme.colors.neutral.surface,
-                  borderColor: theme.colors.neutral.borderStrong,
-                },
-              ]}
-            >
-              <View style={styles.timePickerHeader}>
-                <AppText variant="headingSm">
-                  {activeTimePickerPrayer ? t(`prayer.names.${activeTimePickerPrayer}`) : t('prayer.todayTimes')}
-                </AppText>
-                <Pressable
-                  onPress={() => {
-                    void confirmQuickTimePicker();
+        {Platform.OS === 'ios' ? (
+          <Modal visible={activeTimePickerPrayer !== null} transparent animationType="fade" onRequestClose={closeTimePicker}>
+            <View style={styles.modalOverlay}>
+              <Pressable style={StyleSheet.absoluteFill} onPress={closeTimePicker} />
+              <View
+                style={[
+                  styles.timePickerSheet,
+                  {
+                    backgroundColor: theme.colors.neutral.surface,
+                    borderColor: theme.colors.neutral.borderStrong,
+                  },
+                ]}
+              >
+                <View style={styles.timePickerHeader}>
+                  <AppText variant="headingSm">
+                    {activeTimePickerPrayer ? t(`prayer.names.${activeTimePickerPrayer}`) : t('prayer.todayTimes')}
+                  </AppText>
+                  <Pressable
+                    onPress={() => {
+                      void confirmQuickTimePicker();
+                    }}
+                    style={({ pressed }) => [
+                      styles.timePickerConfirm,
+                      {
+                        backgroundColor: theme.colors.brand.lightGreen,
+                        opacity: pressed ? 0.9 : 1,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="checkmark" size={18} color={theme.colors.brand.darkGreen} />
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={pickerTime}
+                  mode="time"
+                  display="spinner"
+                  is24Hour
+                  minuteInterval={1}
+                  themeVariant={mode === 'dark' ? 'dark' : 'light'}
+                  onChange={(_, nextValue) => {
+                    if (nextValue) {
+                      setPickerTime(nextValue);
+                    }
                   }}
-                  style={({ pressed }) => [
-                    styles.timePickerConfirm,
-                    {
-                      backgroundColor: theme.colors.brand.lightGreen,
-                      opacity: pressed ? 0.9 : 1,
-                    },
-                  ]}
-                >
-                  <Ionicons name="checkmark" size={18} color={theme.colors.brand.darkGreen} />
-                </Pressable>
+                />
               </View>
-              <DateTimePicker
-                value={pickerTime}
-                mode="time"
-                display="spinner"
-                is24Hour
-                minuteInterval={1}
-                themeVariant={mode === 'dark' ? 'dark' : 'light'}
-                onChange={(_, nextValue) => {
-                  if (nextValue) {
-                    setPickerTime(nextValue);
-                  }
-                }}
-              />
             </View>
-          </View>
-        </Modal>
+          </Modal>
+        ) : activeTimePickerPrayer ? (
+          <DateTimePicker
+            value={pickerTime}
+            mode="time"
+            display="clock"
+            is24Hour
+            onChange={(event, nextValue) => {
+              void handleAndroidQuickTimePickerChange(event, nextValue);
+            }}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

@@ -33,6 +33,7 @@ export const MoreSettingsScreen: React.FC = () => {
   const { showAlert } = useAppAlert();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const auth = useAuthStore();
+  const isRTL = auth.language === 'ar';
   const mode = useSettingsStore((s) => s.readerTheme);
   const setReaderTheme = useSettingsStore((s) => s.setReaderTheme);
   const nextMode = mode === 'dark' ? 'light' : 'dark';
@@ -68,7 +69,7 @@ export const MoreSettingsScreen: React.FC = () => {
           <AppText variant="bodyMd" color={getThemeByMode(mode).colors.neutral.textSecondary}>
             {t('more.guestModeHint')}
           </AppText>
-          <View style={styles.guestActions}>
+          <View style={[styles.guestActions, isRTL && styles.rowReverse]}>
             <AppButton title={t('auth.loginTitle')} onPress={() => navigation.navigate('Login')} style={styles.guestButton} />
             <AppButton
               title={t('auth.registerTitle')}
@@ -182,6 +183,9 @@ const styles = StyleSheet.create({
   guestActions: {
     flexDirection: 'row',
     gap: 10,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
   },
   guestButton: {
     flex: 1,

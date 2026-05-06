@@ -7,6 +7,7 @@ import {
   defaultPrayerSettings,
   normalizePrayerSettings,
 } from '@/services/prayer/defaults';
+import { storage } from '@/services/storage';
 
 const baseReminders: ReminderSetting[] = [
   { id: 'wird', type: 'wird', enabled: true, time: '08:00' },
@@ -76,21 +77,25 @@ type SettingsStore = {
   setVibration: (enabled: boolean) => void;
   setQuranFlipSound: (enabled: boolean) => void;
   resetAccountScopedData: () => void;
+  resetPersistentState: () => void;
 };
 
 const buildNowIso = () => new Date().toISOString();
+const buildDefaultSettingsState = () => ({
+  readerTheme: 'dark' as ThemeMode,
+  themeTransition: initialThemeTransition,
+  prayerSettings: defaultPrayerSettings,
+  reminders: buildDefaultReminders(),
+  dhikrLoopSettings: defaultDhikrLoopSettings,
+  vibrationEnabled: true,
+  quranFlipSoundEnabled: true,
+  syncMetadata: {},
+});
 
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set, get) => ({
-      readerTheme: 'dark',
-      themeTransition: initialThemeTransition,
-      prayerSettings: defaultPrayerSettings,
-      reminders: buildDefaultReminders(),
-      dhikrLoopSettings: defaultDhikrLoopSettings,
-      vibrationEnabled: true,
-      quranFlipSoundEnabled: true,
-      syncMetadata: {},
+      ...buildDefaultSettingsState(),
       setReaderTheme: (readerTheme, origin, snapshotUri) =>
         set((state) => {
           if (state.readerTheme === readerTheme) return state;
@@ -152,9 +157,10 @@ export const useSettingsStore = create<SettingsStore>()(
           dhikrLoopSettings: defaultDhikrLoopSettings,
           syncMetadata: {},
         }),
+      resetPersistentState: () => set(buildDefaultSettingsState()),
     }),
     {
-      name: 'noor.settings.store',
+      name: storage.keys.settingsStore,
       storage: createJSONStorage(() => AsyncStorage),
       version: 10,
       migrate: (persistedState) => {

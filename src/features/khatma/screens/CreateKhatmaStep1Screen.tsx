@@ -9,11 +9,14 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppCard } from '@/components/ui/AppCard';
 import { AppInput } from '@/components/ui/AppInput';
 import { juzList, surahList, TOTAL_QURAN_PAGES } from '@/constants/quran';
+import { useAuthStore } from '@/state/authStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateKhatmaStep1'>;
 
 export const CreateKhatmaStep1Screen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
+  const language = useAuthStore((s) => s.language);
+  const isRTL = language === 'ar';
   const [startType, setStartType] = useState<'beginning' | 'juz' | 'surah' | 'page'>('beginning');
   const [value, setValue] = useState('1');
   const numericValue = Math.max(1, Number(value) || 1);
@@ -41,7 +44,7 @@ export const CreateKhatmaStep1Screen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <AppCard style={styles.selectorCard}>
-        <View style={styles.selectorGrid}>
+        <View style={[styles.selectorGrid, isRTL && styles.rowReverse]}>
           <AppButton
             title={t('khatma.fromBeginning')}
             onPress={() => setStartType('beginning')}
@@ -55,7 +58,7 @@ export const CreateKhatmaStep1Screen: React.FC<Props> = ({ navigation }) => {
             style={{ flex: 1 }}
           />
         </View>
-        <View style={styles.selectorGrid}>
+        <View style={[styles.selectorGrid, isRTL && styles.rowReverse]}>
           <AppButton
             title={t('khatma.specificSurah')}
             onPress={() => setStartType('surah')}
@@ -135,6 +138,9 @@ const styles = StyleSheet.create({
   selectorGrid: {
     flexDirection: 'row',
     gap: 8,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
   },
   summaryCard: {
     gap: 8,

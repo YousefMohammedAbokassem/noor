@@ -5,6 +5,7 @@ import { useKhatmaStore } from '@/state/khatmaStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { prayerRuntime } from '@/services/prayer/prayerRuntime';
 import { usePrayerStore } from '@/state/prayerStore';
+import { settingsRepository } from '@/services/prayer/SettingsRepository';
 
 export const syncService = {
   syncNow: async () => {
@@ -67,13 +68,13 @@ export const syncService = {
       });
     }
     if (merged.prayerSettings) {
+      const normalizedPrayerSettings = settingsRepository.replacePrayerSettings(merged.prayerSettings);
       useSettingsStore.setState({
-        prayerSettings: merged.prayerSettings,
         syncMetadata: {
           ...useSettingsStore.getState().syncMetadata,
           prayerSettingsUpdatedAt:
             merged.syncMetadata?.prayerSettingsUpdatedAt ??
-            merged.prayerSettings.updatedAt ??
+            normalizedPrayerSettings.updatedAt ??
             new Date().toISOString(),
         },
       });

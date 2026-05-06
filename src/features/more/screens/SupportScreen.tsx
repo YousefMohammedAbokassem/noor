@@ -62,6 +62,7 @@ export const SupportScreen: React.FC = () => {
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
   const isArabic = (i18n.resolvedLanguage ?? i18n.language).startsWith('ar');
+  const isRTL = isArabic;
   const currency = isArabic ? 'د.إ' : 'AED';
   const [selectedAmount, setSelectedAmount] = useState(presetAmounts[1]);
   const [customAmount, setCustomAmount] = useState('');
@@ -134,8 +135,8 @@ export const SupportScreen: React.FC = () => {
         <View style={[styles.heroGlowLarge, { backgroundColor: 'rgba(255,255,255,0.05)' }]} />
         <View style={[styles.heroGlowSmall, { backgroundColor: 'rgba(231,206,134,0.12)' }]} />
 
-        <View style={styles.heroTop}>
-          <View style={styles.heroCopy}>
+        <View style={[styles.heroTop, isRTL && styles.rowReverse]}>
+          <View style={[styles.heroCopy, isRTL && styles.textWrapRtl]}>
             <AppText variant="headingLg" color={theme.colors.neutral.textOnBrand}>
               {t('support.title')}
             </AppText>
@@ -154,7 +155,7 @@ export const SupportScreen: React.FC = () => {
           />
         </View>
 
-        <View style={styles.badgesRow}>
+        <View style={[styles.badgesRow, isRTL && styles.rowReverse]}>
           {[t('support.oneTimeBadge'), t('support.secureBadge'), t('support.optionalBadge')].map((label) => (
             <View key={label} style={styles.badgePill}>
               <AppText variant="label" color={theme.colors.brand.softGold}>
@@ -167,7 +168,7 @@ export const SupportScreen: React.FC = () => {
 
       <AppCard style={styles.sectionCard}>
         <AppText variant="label">{t('support.chooseAmount')}</AppText>
-        <View style={styles.amountGrid}>
+        <View style={[styles.amountGrid, isRTL && styles.rowReverse]}>
           {presetAmounts.map((amount) => {
             const selected = !parseAmount(customAmount) && selectedAmount === amount;
             return (
@@ -209,6 +210,7 @@ export const SupportScreen: React.FC = () => {
           <View
             style={[
               styles.customAmountField,
+              isRTL && styles.rowReverse,
               {
                 backgroundColor: softPanel,
                 borderColor: softPanelBorder,
@@ -225,6 +227,8 @@ export const SupportScreen: React.FC = () => {
                 styles.customAmountInput,
                 {
                   color: theme.colors.neutral.textPrimary,
+                  textAlign: isRTL ? 'right' : 'left',
+                  writingDirection: isRTL ? 'rtl' : 'ltr',
                 },
               ]}
             />
@@ -262,6 +266,7 @@ export const SupportScreen: React.FC = () => {
                 }}
                 style={({ pressed }) => [
                   styles.methodCard,
+                  isRTL && styles.rowReverse,
                   {
                     backgroundColor: selected
                       ? isDark
@@ -292,8 +297,8 @@ export const SupportScreen: React.FC = () => {
                   />
                 </View>
 
-                <View style={styles.methodCopy}>
-                  <View style={styles.methodHeader}>
+                <View style={[styles.methodCopy, isRTL && styles.textWrapRtl]}>
+                  <View style={[styles.methodHeader, isRTL && styles.rowReverse]}>
                     <AppText variant="bodyLg">{option.title}</AppText>
                     <View
                       style={[
@@ -329,21 +334,23 @@ export const SupportScreen: React.FC = () => {
       <AppCard style={styles.summaryCard}>
         <AppText variant="headingSm">{t('support.summaryTitle')}</AppText>
 
-        <View style={styles.summaryRow}>
+        <View style={[styles.summaryRow, isRTL && styles.rowReverse]}>
           <AppText variant="bodyMd" color={theme.colors.neutral.textSecondary}>
             {t('support.summaryAmount')}
           </AppText>
-          <AppText variant="headingSm">{summaryAmount}</AppText>
+          <AppText variant="headingSm" direction="ltr">
+            {summaryAmount}
+          </AppText>
         </View>
 
-        <View style={styles.summaryRow}>
+        <View style={[styles.summaryRow, isRTL && styles.rowReverse]}>
           <AppText variant="bodyMd" color={theme.colors.neutral.textSecondary}>
             {t('support.summaryMethod')}
           </AppText>
           <AppText variant="bodyLg">{activeMethod.title}</AppText>
         </View>
 
-        <View style={styles.summaryRow}>
+        <View style={[styles.summaryRow, isRTL && styles.rowReverse]}>
           <AppText variant="bodyMd" color={theme.colors.neutral.textSecondary}>
             {t('support.summaryStatus')}
           </AppText>
@@ -358,6 +365,7 @@ export const SupportScreen: React.FC = () => {
         <View
           style={[
             styles.pendingBanner,
+            isRTL && styles.rowReverse,
             {
               backgroundColor: isDark ? 'rgba(231,206,134,0.08)' : 'rgba(18,55,42,0.05)',
               borderColor: isDark ? 'rgba(231,206,134,0.14)' : 'rgba(18,55,42,0.1)',
@@ -410,9 +418,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
   heroCopy: {
     flex: 1,
     gap: 8,
+  },
+  textWrapRtl: {
+    alignItems: 'flex-end',
   },
   heroImage: {
     width: 110,
@@ -468,7 +482,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     writingDirection: 'ltr',
-    textAlign: 'left',
   },
   currencyChip: {
     minWidth: 58,

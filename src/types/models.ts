@@ -162,6 +162,7 @@ export type PrayerRuntimeIssue =
   | 'background_task_unavailable'
   | 'background_execution_limited'
   | 'exact_alarm_status_unknown'
+  | 'expo_go_limited'
   | 'using_cached_location';
 
 export type PrayerRuntimeHealth = {

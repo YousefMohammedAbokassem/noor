@@ -37,6 +37,7 @@ export const DhikrContentScreen: React.FC<Props> = ({ route }) => {
   const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
+  const isRTL = language === 'ar';
 
   const group = useMemo(
     () => adhkarItems.filter((item) => item.categoryId === route.params.categoryId),
@@ -125,7 +126,7 @@ export const DhikrContentScreen: React.FC<Props> = ({ route }) => {
                     },
                   ]}
                 >
-                  <View style={styles.topRow}>
+                  <View style={[styles.topRow, isRTL && styles.rowReverse]}>
                     <View style={[styles.indexBadge, { backgroundColor: theme.colors.brand.mist }]}>
                       <AppText variant="label" color={isDark ? theme.colors.brand.softGold : theme.colors.brand.darkGreen}>
                         {index + 1}
@@ -135,6 +136,7 @@ export const DhikrContentScreen: React.FC<Props> = ({ route }) => {
                     <View
                       style={[
                         styles.repeatBadge,
+                        isRTL && styles.rowReverse,
                         {
                           borderColor: isCompleted ? theme.colors.neutral.success : theme.colors.neutral.border,
                           backgroundColor: isCompleted ? 'rgba(40,122,59,0.15)' : theme.colors.neutral.backgroundElevated,
@@ -231,6 +233,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
   },
   indexBadge: {
     minWidth: 34,

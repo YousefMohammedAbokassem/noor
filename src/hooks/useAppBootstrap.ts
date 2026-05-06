@@ -1,21 +1,75 @@
 import { useEffect, useState } from 'react';
 import { setLanguage } from '@/i18n';
 import { useAuthStore } from '@/state/authStore';
-import { secureSession, storage } from '@/services/storage';
+import { useKhatmaStore } from '@/state/khatmaStore';
+import { usePrayerStore } from '@/state/prayerStore';
+import { useSettingsStore } from '@/state/settingsStore';
+import { useTasbeehStore } from '@/state/tasbeehStore';
+import { secureSession, secureValueStore, storage } from '@/services/storage';
 import { clearAccountScopedData, clearInstallScopedData } from '@/services/accountCleanup';
+
+type PersistStore = {
+  persist?: {
+    hasHydrated: () => boolean;
+    onFinishHydration: (listener: () => void) => () => void;
+  };
+};
+
+type InstallMarker = {
+  installationId: string;
+  installedAt: string;
+};
+
+const waitForPersistHydration = async (store: PersistStore) => {
+  const persistApi = store.persist;
+  if (!persistApi || persistApi.hasHydrated()) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    const unsubscribe = persistApi.onFinishHydration(() => {
+      unsubscribe();
+      resolve();
+    });
+  });
+};
+
+const buildInstallMarker = (): InstallMarker => ({
+  installationId: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+  installedAt: new Date().toISOString(),
+});
 
 export const useAppBootstrap = () => {
   const [isReady, setReady] = useState(false);
   const language = useAuthStore((s) => s.language);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
     const run = async () => {
       try {
-        const installMarker = await storage.getItem<{ installedAt: string }>(storage.keys.installMarker);
-        if (!installMarker) {
+        await Promise.all([
+          waitForPersistHydration(useAuthStore as PersistStore),
+          waitForPersistHydration(useSettingsStore as PersistStore),
+          waitForPersistHydration(usePrayerStore as PersistStore),
+          waitForPersistHydration(useKhatmaStore as PersistStore),
+          waitForPersistHydration(useTasbeehStore as PersistStore),
+        ]);
+
+        const installMarker = await storage.getItem<InstallMarker>(storage.keys.installMarker);
+        const secureInstallFingerprint = await secureValueStore.getString(storage.keys.installFingerprint);
+        const installMarkerInvalid =
+          !installMarker ||
+          typeof installMarker.installationId !== 'string' ||
+          installMarker.installationId.length < 8 ||
+          secureInstallFingerprint !== installMarker.installationId;
+
+        if (installMarkerInvalid) {
           await clearInstallScopedData();
-          await storage.setItem(storage.keys.installMarker, { installedAt: new Date().toISOString() });
+          const nextInstallMarker = buildInstallMarker();
+          await storage.setItem(storage.keys.installMarker, nextInstallMarker);
+          await secureValueStore.setString(
+            storage.keys.installFingerprint,
+            nextInstallMarker.installationId,
+          );
         }
 
         const authState = useAuthStore.getState();
@@ -38,7 +92,15 @@ export const useAppBootstrap = () => {
       }
     };
     void run();
-  }, [isAuthenticated, language]);
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    void setLanguage(language);
+  }, [isReady, language]);
 
   return { isReady };
 };

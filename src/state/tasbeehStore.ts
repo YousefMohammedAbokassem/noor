@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/services/storage';
 
 type TasbeehStore = {
   count: number;
@@ -10,6 +11,7 @@ type TasbeehStore = {
   undo: () => void;
   reset: () => void;
   setTarget: (target: number) => void;
+  resetPersistentState: () => void;
 };
 
 export const useTasbeehStore = create<TasbeehStore>()(
@@ -26,9 +28,10 @@ export const useTasbeehStore = create<TasbeehStore>()(
       },
       reset: () => set({ count: 0, history: [] }),
       setTarget: (target) => set({ target }),
+      resetPersistentState: () => set({ count: 0, target: 33, history: [] }),
     }),
     {
-      name: 'noor.tasbeeh.store',
+      name: storage.keys.tasbeehStore,
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

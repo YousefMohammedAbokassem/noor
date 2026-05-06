@@ -17,8 +17,8 @@ export const AppTabs = () => {
   const tabConfig: TabBarConfig = {
     QuranHome: { label: t('quran.nav'), icon: { name: 'quran', library: 'custom' } },
     AdhkarCategories: { label: t('adhkar.categories'), icon: { name: 'bookmark-multiple-outline', library: 'materialCommunity' } },
-    Tasbeeh: { label: t('tasbeeh.nav'), icon: { name: 'rosary', library: 'custom' }, center: true },
-    Home: { label: t('home.title'), icon: { name: 'home-variant-outline', library: 'materialCommunity' } },
+    Tasbeeh: { label: t('tasbeeh.nav'), icon: { name: 'rosary', library: 'custom' } },
+    Home: { label: t('home.title'), icon: { name: 'home-variant-outline', library: 'materialCommunity' }, center: true },
     QiblaTab: { label: t('qibla.title'), icon: { name: 'qibla', library: 'custom' } },
   };
 

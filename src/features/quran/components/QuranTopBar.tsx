@@ -22,11 +22,37 @@ export const QuranTopBar: React.FC<Props> = ({ title, subtitle, onBack, rightSlo
   const accentColor = mode === 'dark' ? theme.colors.brand.softGold : theme.colors.brand.darkGreen;
   const isRTL = language === 'ar';
 
-  return (
-    <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-      <View style={styles.rightSlot}>{rightSlot}</View>
+  const backButton = (
+    <Pressable
+      onPress={onBack}
+      style={({ pressed }) => [
+        styles.backButton,
+        { flexDirection: isRTL ? 'row-reverse' : 'row' },
+        {
+          borderColor: theme.colors.neutral.border,
+          backgroundColor: theme.colors.neutral.surface,
+          opacity: pressed ? 0.86 : 1,
+        },
+      ]}
+    >
+      <Ionicons
+        name={isRTL ? 'arrow-forward' : 'arrow-back'}
+        size={20}
+        color={accentColor}
+      />
+      <AppText variant="label" color={accentColor}>
+        {t('common.back')}
+      </AppText>
+    </Pressable>
+  );
 
-      <View style={styles.textWrap}>
+  return (
+    <View style={styles.row}>
+      <View style={[styles.sideSlot, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+        {isRTL ? backButton : rightSlot}
+      </View>
+
+      <View style={[styles.textWrap, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
         <AppText variant="headingSm">{title}</AppText>
         {!!subtitle && (
           <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
@@ -35,32 +61,16 @@ export const QuranTopBar: React.FC<Props> = ({ title, subtitle, onBack, rightSlo
         )}
       </View>
 
-      <Pressable
-        onPress={onBack}
-        style={({ pressed }) => [
-          styles.backButton,
-          {
-            borderColor: theme.colors.neutral.border,
-            backgroundColor: theme.colors.neutral.surface,
-            opacity: pressed ? 0.86 : 1,
-          },
-        ]}
-      >
-        <Ionicons
-          name={isRTL ? 'arrow-forward' : 'arrow-back'}
-          size={20}
-          color={accentColor}
-        />
-        <AppText variant="label" color={accentColor}>
-          {t('common.back')}
-        </AppText>
-      </Pressable>
+      <View style={[styles.sideSlot, { alignItems: isRTL ? 'flex-start' : 'flex-end' }]}>
+        {isRTL ? rightSlot : backButton}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   row: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
@@ -73,14 +83,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    flexDirection: 'row',
   },
   textWrap: {
     flex: 1,
     gap: 2,
   },
-  rightSlot: {
-    minWidth: 44,
-    alignItems: 'flex-end',
+  sideSlot: {
+    minWidth: 88,
+    justifyContent: 'center',
   },
 });

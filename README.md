@@ -34,8 +34,19 @@ Useful variants:
 
 - `npm run start:lan`
 - `npm run start:tunnel`
+- `npm run start:go` for quick UI-only Expo Go sessions
 - `npm run android`
 - `npm run ios`
+
+`npm run start` now starts Metro in dev-client mode by default so notification,
+custom sound, and background behavior can be tested against a native build.
+
+To generate a dev client:
+
+```bash
+npm run build:dev:android
+npm run build:dev:ios
+```
 
 ## Verification
 
@@ -51,6 +62,8 @@ This runs:
 
 ## Build
 
+- Development build Android: `npm run build:dev:android`
+- Development build iOS: `npm run build:dev:ios`
 - Preview APK: `npm run build:apk`
 - Production AAB: `npm run build:aab`
 

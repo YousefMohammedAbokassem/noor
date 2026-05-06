@@ -200,7 +200,10 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<{ code?: string; message?: string }>) => {
     const originalConfig = (error.config ?? {}) as RequestConfigWithRetry;
     const requestUrl = originalConfig.url ?? '';
-    const isAuthRoute = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+    const isAuthRoute =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/google') ||
+      requestUrl.includes('/auth/register');
 
     if (
       error.response?.status === 401 &&

@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { isDevice } from 'expo-device';
 import { Magnetometer } from 'expo-sensors';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
@@ -15,6 +15,7 @@ import { locationService } from '@/services/locationService';
 import { qiblaService } from '@/services/qiblaService';
 import { goBackSmart } from '@/navigation/goBackSmart';
 import { useSettingsStore } from '@/state/settingsStore';
+import { useAuthStore } from '@/state/authStore';
 import { getThemeByMode } from '@/theme';
 
 const normalize = (value: number) => {
@@ -32,8 +33,10 @@ export const QiblaScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const mode = useSettingsStore((s) => s.readerTheme);
+  const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
+  const isRTL = language === 'ar';
   const showInlineTopBar = route.name === 'QiblaTab';
 
   const [heading, setHeading] = useState(0);
@@ -74,47 +77,51 @@ export const QiblaScreen: React.FC = () => {
     }
   }, [t]);
 
-  useEffect(() => {
-    void loadQibla();
-  }, [loadQibla]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadQibla();
+    }, [loadQibla]),
+  );
 
-  useEffect(() => {
-    let magnetometerSub: { remove: () => void } | null = null;
-    let headingSub: { remove: () => void } | null = null;
-    let mounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let magnetometerSub: { remove: () => void } | null = null;
+      let headingSub: { remove: () => void } | null = null;
+      let mounted = true;
 
-    const startSensors = async () => {
-      if (!isDevice) {
-        setSensorError(t('qibla.simulatorSensorHint'));
-        return;
-      }
+      const startSensors = async () => {
+        if (!isDevice) {
+          setSensorError(t('qibla.simulatorSensorHint'));
+          return;
+        }
 
-      try {
-        headingSub = await locationService.watchHeading((value) => {
-          applySmoothHeading(value);
-        });
-      } catch {
         try {
-          Magnetometer.setUpdateInterval(150);
-          magnetometerSub = Magnetometer.addListener((event) => {
-            applySmoothHeading(headingFromSensor(event.x, event.y));
+          headingSub = await locationService.watchHeading((value) => {
+            applySmoothHeading(value);
           });
         } catch {
-          if (!mounted) return;
-          setSensorError(t('qibla.sensorFailed'));
+          try {
+            Magnetometer.setUpdateInterval(150);
+            magnetometerSub = Magnetometer.addListener((event) => {
+              applySmoothHeading(headingFromSensor(event.x, event.y));
+            });
+          } catch {
+            if (!mounted) return;
+            setSensorError(t('qibla.sensorFailed'));
+          }
         }
-      }
-    };
+      };
 
-    setSensorError('');
-    void startSensors();
+      setSensorError('');
+      void startSensors();
 
-    return () => {
-      mounted = false;
-      headingSub?.remove();
-      magnetometerSub?.remove();
-    };
-  }, [applySmoothHeading, t]);
+      return () => {
+        mounted = false;
+        headingSub?.remove();
+        magnetometerSub?.remove();
+      };
+    }, [applySmoothHeading, t]),
+  );
 
   const delta = useMemo(() => {
     if (qiblaAngle === null) return null;
@@ -165,7 +172,7 @@ export const QiblaScreen: React.FC = () => {
           <AppCard
             style={[styles.metricsCard, { backgroundColor: theme.colors.brand.darkGreen, borderColor: theme.colors.brand.green }]}
           >
-            <View style={styles.metricsRow}>
+            <View style={[styles.metricsRow, isRTL && styles.rowReverse]}>
               <View style={styles.metricPill}>
                 <AppText variant="bodySm" color="#C5DACF" style={styles.metricLabel}>
                   {t('qibla.phoneHeading')}
@@ -265,6 +272,9 @@ const styles = StyleSheet.create({
   metricsRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
   },
   metricPill: {
     flex: 1,

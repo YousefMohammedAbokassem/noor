@@ -18,6 +18,7 @@ import { buildTasbeehGeometry } from '@/features/tasbeeh/utils/rosaryPath';
 import { getTabBarLayout } from '@/navigation/tabbar/tabBarTheme';
 import { useTasbeehStore } from '@/state/tasbeehStore';
 import { useSettingsStore } from '@/state/settingsStore';
+import { useAuthStore } from '@/state/authStore';
 import { getThemeByMode } from '@/theme';
 
 const ADHKAR = ['سبحان الله', 'الحمد لله', 'الله أكبر', 'لا إله إلا الله', 'أستغفر الله'];
@@ -35,8 +36,10 @@ export const TasbeehScreen: React.FC = () => {
   const reset = useTasbeehStore((s) => s.reset);
   const setTarget = useTasbeehStore((s) => s.setTarget);
   const mode = useSettingsStore((s) => s.readerTheme);
+  const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
+  const isRTL = language === 'ar';
   const tabBarLayout = useMemo(() => getTabBarLayout(insets.bottom), [insets.bottom]);
   const reservedBottomSpace = Math.max(tabBarHeight, tabBarLayout.wrapperHeight);
 
@@ -168,7 +171,7 @@ export const TasbeehScreen: React.FC = () => {
           },
         ]}
       >
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, isRTL && styles.rowReverse]}>
           <Pressable
             onPress={() => setDhikrIndex((current) => (current - 1 + ADHKAR.length) % ADHKAR.length)}
             style={({ pressed }) => [
@@ -180,7 +183,7 @@ export const TasbeehScreen: React.FC = () => {
               },
             ]}
           >
-            <Ionicons name="chevron-back" size={16} color={theme.colors.brand.softGold} />
+            <Ionicons name={isRTL ? 'chevron-forward' : 'chevron-back'} size={16} color={theme.colors.brand.softGold} />
             <AppText variant="bodySm" style={styles.navButtonTextCompact} color="#D9E4DE">
               {t('tasbeeh.previousDhikr')}
             </AppText>
@@ -213,7 +216,7 @@ export const TasbeehScreen: React.FC = () => {
             <AppText variant="bodySm" style={styles.navButtonTextCompact} color="#D9E4DE">
               {t('tasbeeh.nextDhikr')}
             </AppText>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.brand.softGold} />
+            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={16} color={theme.colors.brand.softGold} />
           </Pressable>
         </View>
 
@@ -293,7 +296,7 @@ export const TasbeehScreen: React.FC = () => {
           <AppText variant="bodySm" color="#C9D8D0">
             {t('tasbeeh.chooseTarget')}
           </AppText>
-          <View style={styles.targetRow}>
+          <View style={[styles.targetRow, isRTL && styles.rowReverse]}>
             {TARGET_OPTIONS.map((option) => {
               const selected = target === option;
               return (
@@ -339,6 +342,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
   },
   navButtonCompact: {
     flex: 1,

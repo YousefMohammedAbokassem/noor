@@ -14,6 +14,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Language'>;
 export const LanguageScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const auth = useAuthStore();
+  const isRTL = auth.language === 'ar';
 
   const chooseLanguage = async (lang: 'ar' | 'en') => {
     try {
@@ -38,12 +39,12 @@ export const LanguageScreen: React.FC<Props> = ({ navigation }) => {
         </AppText>
       </View>
 
-      <View style={styles.actions}>
+      <View style={[styles.actions, isRTL && styles.rowReverse]}>
         <AppButton title={t('language.arabic')} onPress={() => chooseLanguage('ar')} style={{ flex: 1 }} />
         <AppButton title={t('language.english')} variant="secondary" onPress={() => chooseLanguage('en')} style={{ flex: 1 }} />
       </View>
 
-      <View style={styles.actions}>
+      <View style={[styles.actions, isRTL && styles.rowReverse]}>
         <AppButton
           title={t('language.numbersArabic')}
           variant="ghost"
@@ -92,5 +93,8 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 10,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
   },
 });

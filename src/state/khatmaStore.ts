@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Bookmark, Khatma, KhatmaStartType, ReadingProgress, SyncMetadata } from '@/types/models';
 import { TOTAL_QURAN_PAGES } from '@/constants/quran';
+import { storage } from '@/services/storage';
 
 type KhatmaStore = {
   activeKhatma: Khatma | null;
@@ -38,6 +39,12 @@ const getStatus = (currentPage: number, expectedPage: number): Khatma['trackStat
   return 'onTrack';
 };
 
+const getCompletionPercent = (startPage: number, currentPage: number, endPage: number, status?: Khatma['status']) => {
+  const totalPages = Math.max(1, endPage - startPage + 1);
+  const pagesRead = status === 'completed' ? totalPages : Math.max(0, currentPage - startPage);
+  return Math.round((Math.min(totalPages, pagesRead) / totalPages) * 100);
+};
+
 export const useKhatmaStore = create<KhatmaStore>()(
   persist(
     (set, get) => ({
@@ -62,7 +69,7 @@ export const useKhatmaStore = create<KhatmaStore>()(
           startedAt: now,
           status: 'active',
           currentPage: startPage,
-          completionPercent: Math.round(((startPage - 1) / TOTAL_QURAN_PAGES) * 100),
+          completionPercent: 0,
           trackStatus: 'onTrack',
           updatedAt: now,
         };
@@ -86,7 +93,10 @@ export const useKhatmaStore = create<KhatmaStore>()(
         if (!current || current.status === 'completed') return 'idle';
         const now = buildNowIso();
 
-        const nextPage = Math.min(TOTAL_QURAN_PAGES, current.currentPage + current.dailyPages);
+        const completesKhatma = current.currentPage + current.dailyPages > current.endPage;
+        const nextPage = completesKhatma
+          ? current.endPage
+          : Math.min(current.endPage, current.currentPage + current.dailyPages);
         const daysPassed = Math.max(
           1,
           Math.ceil((Date.now() - new Date(current.startedAt).getTime()) / (24 * 60 * 60 * 1000)),
@@ -96,9 +106,14 @@ export const useKhatmaStore = create<KhatmaStore>()(
         const updated: Khatma = {
           ...current,
           currentPage: nextPage,
-          completionPercent: Math.round((nextPage / TOTAL_QURAN_PAGES) * 100),
+          completionPercent: getCompletionPercent(
+            current.startPage,
+            nextPage,
+            current.endPage,
+            completesKhatma ? 'completed' : 'active',
+          ),
           trackStatus: getStatus(nextPage, expectedPage),
-          status: nextPage >= current.endPage ? 'completed' : 'active',
+          status: completesKhatma ? 'completed' : 'active',
           updatedAt: now,
         };
 
@@ -116,7 +131,7 @@ export const useKhatmaStore = create<KhatmaStore>()(
             readingProgressUpdatedAt: now,
           },
         });
-        return nextPage >= current.endPage ? 'completed' : 'advanced';
+        return completesKhatma ? 'completed' : 'advanced';
       },
       updateReadingProgress: (page, surah, juz) => {
         const now = buildNowIso();
@@ -185,7 +200,7 @@ export const useKhatmaStore = create<KhatmaStore>()(
         }),
     }),
     {
-      name: 'noor.khatma.store',
+      name: storage.keys.khatmaStore,
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

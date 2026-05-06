@@ -21,42 +21,46 @@ export const SplashScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     let cancelled = false;
 
-    const timer = setTimeout(() => {
-      void (async () => {
-        let nextRoute: 'Language' | 'MainTabs' | 'Onboarding';
-        if (!auth.isOnboardingDone) {
-          nextRoute = 'Language';
-        } else {
-          nextRoute = auth.isAuthenticated || auth.isGuest ? 'MainTabs' : 'Onboarding';
-        }
+    void (async () => {
+      let nextRoute: 'Language' | 'MainTabs' | 'Onboarding';
+      if (!auth.isOnboardingDone) {
+        nextRoute = 'Language';
+      } else {
+        nextRoute = auth.isAuthenticated || auth.isGuest ? 'MainTabs' : 'Onboarding';
+      }
 
-        try {
-          const [notificationGranted, locationGranted] = await Promise.all([
-            notificationService.getPermissionStatus(),
-            locationService.getPermissionStatus(),
-          ]);
-
-          if (cancelled) {
-            return;
-          }
-
-          if (notificationGranted && locationGranted) {
-            navigation.replace(nextRoute);
-            return;
-          }
-        } catch {
-          // Fall back to the permission gate when permission status cannot be read.
-        }
-
+      if (nextRoute !== 'MainTabs') {
         if (!cancelled) {
-          navigation.replace('PermissionGate', { nextRoute });
+          navigation.replace(nextRoute);
         }
-      })();
-    }, 1200);
+        return;
+      }
+
+      try {
+        const [notificationGranted, locationGranted] = await Promise.all([
+          notificationService.getPermissionStatus(),
+          locationService.getPermissionStatus(),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (notificationGranted && locationGranted) {
+          navigation.replace(nextRoute);
+          return;
+        }
+      } catch {
+        // Fall back to the permission gate when permission status cannot be read.
+      }
+
+      if (!cancelled) {
+        navigation.replace('PermissionGate', { nextRoute });
+      }
+    })();
 
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
   }, [auth.isAuthenticated, auth.isGuest, auth.isOnboardingDone, navigation]);
 

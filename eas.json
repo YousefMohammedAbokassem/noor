@@ -4,6 +4,31 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "development": {
+      "channel": "development",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "image": "latest"
+      },
+      "ios": {
+        "image": "latest"
+      }
+    },
+    "preview": {
+      "channel": "preview",
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "production",
+        "NOOR_SLIM_ANDROID_APK": "1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "269302985987-6nsm7hmdr38ojfktiig2u387f9a1dte5.apps.googleusercontent.com"
+      },
+      "android": {
+        "buildType": "apk",
+        "image": "latest"
+      }
+    },
     "production": {
       "channel": "production",
       "android": {

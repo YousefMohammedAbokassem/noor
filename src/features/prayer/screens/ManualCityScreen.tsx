@@ -19,6 +19,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ManualCity'>;
 export const ManualCityScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const setPrayerSettings = useSettingsStore((s) => s.setPrayerSettings);
+  const prayerSettings = useSettingsStore((s) => s.prayerSettings);
   const mode = useSettingsStore((s) => s.readerTheme);
   const theme = getThemeByMode(mode);
   const language = useAuthStore((s) => s.language);
@@ -57,6 +58,8 @@ export const ManualCityScreen: React.FC<Props> = ({ navigation }) => {
                 locationLabel: cityName,
                 locationSource: 'manual_preset',
                 presetCityId: item.id,
+                calculationMethod: item.calculationMethod ?? prayerSettings.calculationMethod,
+                asrMethod: item.asrMethod ?? prayerSettings.asrMethod,
                 locationUpdatedAt: new Date().toISOString(),
               });
 
@@ -72,8 +75,8 @@ export const ManualCityScreen: React.FC<Props> = ({ navigation }) => {
               navigation.replace('MainTabs');
             }}
           >
-            <AppCard style={styles.card}>
-              <View>
+            <AppCard style={[styles.card, isRTL && styles.rowReverse]}>
+              <View style={[styles.textWrap, isRTL && styles.textWrapRtl]}>
                 <AppText variant="headingSm">{language === 'ar' ? item.cityAr : item.cityEn}</AppText>
                 <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
                   {language === 'ar' ? item.countryAr : item.countryEn}
@@ -98,6 +101,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
+  textWrap: {
+    gap: 2,
+  },
+  textWrapRtl: {
+    alignItems: 'flex-end',
   },
   gpsButton: {
     marginBottom: 12,

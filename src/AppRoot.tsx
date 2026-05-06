@@ -34,6 +34,30 @@ const navigationRef = createNavigationContainerRef<RootStackParamList>();
 const CLOCK_CHECK_INTERVAL_MS = 30_000;
 const CLOCK_JUMP_TOLERANCE_MS = 90_000;
 const AUTO_LOCATION_REFRESH_INTERVAL_MS = 5 * 60_000;
+const NOTIFICATION_DEFERRED_ROUTES = new Set<keyof RootStackParamList>([
+  'Splash',
+  'PermissionGate',
+  'Language',
+  'Onboarding',
+  'Login',
+  'Register',
+  'ForgotPassword',
+  'ResetPassword',
+  'VerifyEmail',
+]);
+
+const isAutoLocationRefreshDue = (lastUpdatedAt?: string) => {
+  if (!lastUpdatedAt) {
+    return true;
+  }
+
+  const lastUpdatedTime = new Date(lastUpdatedAt).getTime();
+  if (!Number.isFinite(lastUpdatedTime)) {
+    return true;
+  }
+
+  return Date.now() - lastUpdatedTime >= AUTO_LOCATION_REFRESH_INTERVAL_MS;
+};
 
 export const AppRoot = () => {
   const { isReady } = useAppBootstrap();
@@ -47,6 +71,57 @@ export const AppRoot = () => {
   const settingsSyncStartedRef = React.useRef(false);
   const lastClockSampleRef = React.useRef<{ timestamp: number; timeZone: string } | null>(null);
   const isAppActiveRef = React.useRef(AppState.currentState === 'active');
+  const pendingNotificationOpenRef = React.useRef<{
+    kind?: 'reminder' | 'adhan' | 'pre_adhan' | 'dhikr_loop';
+    reminderType?: string;
+    target?: 'adhkar' | 'prayer' | 'reminders';
+  } | null>(null);
+
+  const navigateFromNotification = React.useCallback(
+    (payload: {
+      kind?: 'reminder' | 'adhan' | 'pre_adhan' | 'dhikr_loop';
+      reminderType?: string;
+      target?: 'adhkar' | 'prayer' | 'reminders';
+    }) => {
+      if (payload.kind === 'adhan' || payload.target === 'prayer') {
+        navigationRef.navigate('MainTabs', { screen: 'Home' });
+        return;
+      }
+
+      if (payload.kind === 'pre_adhan') {
+        navigationRef.navigate('MainTabs', { screen: 'Home' });
+        return;
+      }
+
+      if (payload.kind === 'dhikr_loop' || payload.target === 'adhkar') {
+        navigationRef.navigate('MainTabs', { screen: 'AdhkarCategories' });
+        return;
+      }
+
+      navigationRef.navigate('Reminders');
+    },
+    [],
+  );
+
+  const flushPendingNotificationOpen = React.useCallback(() => {
+    if (!navigationRef.isReady()) {
+      return;
+    }
+
+    const payload = pendingNotificationOpenRef.current;
+    if (!payload) {
+      return;
+    }
+
+    const currentRoute = navigationRef.getCurrentRoute();
+    const currentRouteName = currentRoute?.name as keyof RootStackParamList | undefined;
+    if (!currentRouteName || NOTIFICATION_DEFERRED_ROUTES.has(currentRouteName)) {
+      return;
+    }
+
+    pendingNotificationOpenRef.current = null;
+    navigateFromNotification(payload);
+  }, [navigateFromNotification]);
 
   React.useEffect(() => {
     if (rating.visible && navigationRef.isReady()) {
@@ -59,7 +134,14 @@ export const AppRoot = () => {
 
   React.useEffect(() => {
     if (!isReady) return;
-    void prayerRuntime.initialize();
+
+    const timer = setTimeout(() => {
+      void prayerRuntime.initialize();
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [isReady]);
 
   React.useEffect(() => {
@@ -68,17 +150,21 @@ export const AppRoot = () => {
       isAppActiveRef.current = status === 'active';
       if (status === 'active') {
         const now = Date.now();
+        const currentPrayerSettings = useSettingsStore.getState().prayerSettings;
         const currentTimeZone = locationService.getCurrentTimeZone();
         const previous = lastClockSampleRef.current;
         const clockMovedBack = previous ? now + 60_000 < previous.timestamp : false;
         const timeZoneChanged = previous ? previous.timeZone !== currentTimeZone : false;
+        const autoLocationRefreshDue =
+          currentPrayerSettings.locationMode === 'auto' &&
+          isAutoLocationRefreshDue(currentPrayerSettings.locationUpdatedAt);
         lastClockSampleRef.current = {
           timestamp: now,
           timeZone: currentTimeZone,
         };
 
         void prayerRuntime.requestRepair(clockMovedBack || timeZoneChanged ? 'app_foreground_clock_changed' : 'app_foreground', {
-          allowLocationRefresh: true,
+          allowLocationRefresh: autoLocationRefreshDue,
           forceNotificationResync: clockMovedBack || timeZoneChanged,
         });
       }
@@ -132,23 +218,9 @@ export const AppRoot = () => {
       const clockJumped = clockJumpedBack || Math.abs(elapsed - CLOCK_CHECK_INTERVAL_MS) > CLOCK_JUMP_TOLERANCE_MS;
       const timeZoneChanged = previous ? previous.timeZone !== currentTimeZone : false;
 
-      const autoLocationRefreshDue = (() => {
-        if (currentPrayerSettings.locationMode !== 'auto') {
-          return false;
-        }
-
-        const lastUpdatedAt = currentPrayerSettings.locationUpdatedAt;
-        if (!lastUpdatedAt) {
-          return true;
-        }
-
-        const lastUpdatedTime = new Date(lastUpdatedAt).getTime();
-        if (!Number.isFinite(lastUpdatedTime)) {
-          return true;
-        }
-
-        return now.getTime() - lastUpdatedTime >= AUTO_LOCATION_REFRESH_INTERVAL_MS;
-      })();
+      const autoLocationRefreshDue =
+        currentPrayerSettings.locationMode === 'auto' &&
+        isAutoLocationRefreshDue(currentPrayerSettings.locationUpdatedAt);
 
       if (!currentPrayerTimes) {
         if (autoLocationRefreshDue) {
@@ -200,26 +272,16 @@ export const AppRoot = () => {
     void notificationService
       .subscribeToNotificationOpen(
         (payload) => {
-          if (!navigationRef.isReady()) return;
-
-          if (payload.kind === 'adhan' || payload.target === 'prayer') {
-            navigationRef.navigate('MainTabs', { screen: 'Home' });
+          const currentRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute() : null;
+          const currentRouteName = currentRoute?.name as keyof RootStackParamList | undefined;
+          if (!currentRouteName || NOTIFICATION_DEFERRED_ROUTES.has(currentRouteName)) {
+            pendingNotificationOpenRef.current = payload;
             return;
           }
 
-          if (payload.kind === 'pre_adhan') {
-            navigationRef.navigate('MainTabs', { screen: 'Home' });
-            return;
-          }
-
-          if (payload.kind === 'dhikr_loop' || payload.target === 'adhkar') {
-            navigationRef.navigate('MainTabs', { screen: 'AdhkarCategories' });
-            return;
-          }
-
-          navigationRef.navigate('Reminders');
+          navigateFromNotification(payload);
         },
-        { consumeInitialResponse: false },
+        { consumeInitialResponse: true },
       )
       .then((cleanup) => {
         if (!active) {
@@ -233,7 +295,7 @@ export const AppRoot = () => {
       active = false;
       unsubscribe();
     };
-  }, [isReady]);
+  }, [isReady, navigateFromNotification]);
 
   React.useEffect(() => {
     if (!isReady || !khatmaUpdatedAt) return;
@@ -262,7 +324,11 @@ export const AppRoot = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AppAlertProvider>
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={flushPendingNotificationOpen}
+          onStateChange={flushPendingNotificationOpen}
+        >
           <RootNavigator />
         </NavigationContainer>
       </AppAlertProvider>

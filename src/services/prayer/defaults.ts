@@ -21,13 +21,25 @@ const roundCoordinate = (value: unknown) => {
 };
 
 const allowedNotificationModes: PrayerNotificationMode[] = ['adhan_sound', 'default_sound', 'silent'];
-const allowedPreviewModes: NotificationPreviewMode[] = ['full'];
+const allowedPreviewModes: NotificationPreviewMode[] = ['private', 'full'];
 const allowedHighLatitudeRules: PrayerHighLatitudeRule[] = [
   'recommended',
   'middle_of_the_night',
   'seventh_of_the_night',
   'twilight_angle',
 ];
+
+const syriaDefaultLocation = {
+  city: 'Damascus',
+  country: 'Syria',
+  countryCode: 'SY',
+  latitude: 33.5138,
+  longitude: 36.2765,
+  timeZone: 'Asia/Damascus',
+  locationLabel: 'Damascus',
+  locationSource: 'manual_preset' as const,
+  presetCityId: 'damascus',
+};
 
 export const defaultPrayerNotifications: PrayerNotificationToggles = {
   fajr: true,
@@ -46,14 +58,15 @@ export const defaultManualPrayerTimes: PrayerManualTimes = {
 };
 
 export const defaultPrayerSettings: PrayerSettings = {
-  locationMode: 'auto',
+  locationMode: 'manual',
   timeMode: 'auto',
-  calculationMethod: 'umm_al_qura',
+  ...syriaDefaultLocation,
+  calculationMethod: 'egyptian',
   highLatitudeRule: 'recommended',
   asrMethod: 'shafi',
   adhanVoice: 'abdul_basit',
   notificationMode: 'adhan_sound',
-  notificationPreviewMode: 'full',
+  notificationPreviewMode: 'private',
   prayerNotifications: defaultPrayerNotifications,
   preAdhanReminderEnabled: false,
   preAdhanReminderMinutes: 10,

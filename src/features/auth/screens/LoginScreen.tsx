@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
+import Constants from 'expo-constants';
+import * as Google from 'expo-auth-session/providers/google';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,6 +36,28 @@ export const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
   const auth = useAuthStore();
   const mode = useSettingsStore((s) => s.readerTheme);
   const theme = getThemeByMode(mode);
+  const googleClientId =
+    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+    (Constants.expoConfig?.extra as { googleAndroidClientId?: string; googleWebClientId?: string } | undefined)
+      ?.googleAndroidClientId ||
+    (Constants.expoConfig?.extra as { googleAndroidClientId?: string; googleWebClientId?: string } | undefined)
+      ?.googleWebClientId;
+  const googleAndroidClientId =
+    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
+    (Constants.expoConfig?.extra as { googleAndroidClientId?: string } | undefined)?.googleAndroidClientId;
+  const googleWebClientId =
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+    (Constants.expoConfig?.extra as { googleWebClientId?: string } | undefined)?.googleWebClientId;
+  const [googleRequest, googleResponse, promptGoogleSignIn] = Google.useAuthRequest(
+    {
+      clientId: googleClientId ?? 'missing-google-client-id',
+      androidClientId: googleAndroidClientId,
+      webClientId: googleWebClientId,
+      scopes: ['openid', 'profile', 'email'],
+      selectAccount: true,
+    },
+  );
 
   const schema = useMemo(
     () =>
@@ -79,6 +103,57 @@ export const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
+  const completeGoogleLogin = React.useCallback(
+    async (idToken: string) => {
+      setLoading(true);
+      setError('');
+      setSuccess('');
+      setBlockedEmail(null);
+
+      try {
+        const result = await authApi.googleLogin({
+          idToken,
+          preferredLanguage: auth.language,
+          numberFormat: auth.numberFormat,
+          device: await buildDeviceMeta(),
+        });
+        await secureSession.saveTokens(result.tokens);
+        auth.login(result.user);
+        await syncService.syncNow().catch(() => null);
+        navigation.replace('PermissionGate', { nextRoute: 'MainTabs' });
+      } catch (e) {
+        setError((e as ApiClientError).message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [auth, navigation],
+  );
+
+  React.useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken = googleResponse.params.id_token;
+      if (idToken) {
+        void completeGoogleLogin(idToken);
+      } else {
+        setError(t('auth.googleMissingToken'));
+      }
+    } else if (googleResponse?.type === 'error') {
+      setError(googleResponse.error?.message ?? t('auth.googleFailed'));
+    }
+  }, [completeGoogleLogin, googleResponse, t]);
+
+  const handleGoogleLogin = async () => {
+    if (!googleClientId) {
+      setError(t('auth.googleNotConfigured'));
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    await promptGoogleSignIn();
+  };
+
   return (
     <Screen showDecorations={false} showThemeToggle={false}>
       <View style={styles.hero}>
@@ -107,6 +182,12 @@ export const LoginScreen: React.FC<Props> = ({ navigation, route }) => {
       {!!success && <AppText color={theme.colors.neutral.success}>{success}</AppText>}
 
       <AppButton title={loading ? t('common.loading') : t('auth.loginTitle')} onPress={handleSubmit(submit)} disabled={loading} />
+      <AppButton
+        title={loading ? t('common.loading') : t('auth.loginWithGoogle')}
+        variant="secondary"
+        onPress={handleGoogleLogin}
+        disabled={loading || !googleRequest}
+      />
       {blockedEmail ? (
         <AppButton
           title={t('auth.goToVerification')}

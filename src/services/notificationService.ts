@@ -48,6 +48,13 @@ type NotificationScheduleState = {
   scheduledUntil?: string;
 };
 
+type NotificationRuntimeEnvironment = {
+  isExpoGo: boolean;
+  requiresDevelopmentBuild: boolean;
+  supportsBundledSounds: boolean;
+  supportsReliableNotificationTesting: boolean;
+};
+
 type AdhanScheduleResult = {
   granted: boolean;
   scheduledCount: number;
@@ -84,10 +91,11 @@ const ADHAN_PREFIX = 'noor-prayer-adhan-';
 const PRE_ADHAN_PREFIX = 'noor-prayer-preadhan-';
 const REMINDER_PREFIX = 'noor-reminder-';
 const DHIKR_LOOP_ID = 'noor-dhikr-loop';
+const DHIKR_LOOP_PREFIX = 'noor-dhikr-loop-';
 const IOS_PENDING_LIMIT = 60;
-const IOS_RESERVED_PENDING = 10;
-const ADHAN_LOOKAHEAD_DAYS_ANDROID = 30;
-const REMINDER_LOOKAHEAD_DAYS_ANDROID = 7;
+const IOS_RESERVED_PENDING = 4;
+const ADHAN_LOOKAHEAD_DAYS_ANDROID = 60;
+const REMINDER_LOOKAHEAD_DAYS_ANDROID = 30;
 const MIN_SCHEDULE_LEAD_MS = 1_000;
 const DHIKR_MIN_INTERVAL_MINUTES = 5;
 const DHIKR_MAX_INTERVAL_MINUTES = 180;
@@ -207,6 +215,12 @@ const saveNotificationState = async (nextState: NotificationScheduleState) => {
 const getCurrentLang = (): AppLang => ((i18n.resolvedLanguage ?? i18n.language).startsWith('en') ? 'en' : 'ar');
 const getAppTitle = (lang: AppLang) => i18n.t('appName', { lng: lang });
 const getAdhanStopActionTitle = (lang: AppLang) => (lang === 'ar' ? 'إيقاف الأذان' : 'Stop Adhan');
+const getRuntimeEnvironment = (): NotificationRuntimeEnvironment => ({
+  isExpoGo,
+  requiresDevelopmentBuild: isExpoGo,
+  supportsBundledSounds: !isExpoGo,
+  supportsReliableNotificationTesting: !isExpoGo,
+});
 
 const normalizeIntervalMinutes = (value: number) => {
   const rounded = Number.isFinite(value) ? Math.round(value) : 30;
@@ -387,7 +401,9 @@ const getDhikrLoopContent = (lang: AppLang, cycleIndex?: number) => {
 
 const getNotificationsModule = async () => {
   if (!notificationsModulePromise) {
-    notificationsModulePromise = import('expo-notifications');
+    notificationsModulePromise = Promise.resolve(
+      require('expo-notifications') as typeof import('expo-notifications'),
+    );
   }
 
   const Notifications = await notificationsModulePromise;
@@ -429,32 +445,54 @@ const getNotificationsModule = async () => {
 const ensureChannels = async (Notifications: typeof import('expo-notifications'), lang: AppLang) => {
   if (Platform.OS !== 'android') return;
 
-  await Notifications.setNotificationChannelAsync('default', {
+  const configureChannel = async (
+    id: string,
+    options: Parameters<typeof Notifications.setNotificationChannelAsync>[1],
+  ) => {
+    try {
+      await Notifications.setNotificationChannelAsync(id, options);
+    } catch (error) {
+      prayerLogger.warn('Unable to configure notification channel', { id, error });
+      return false;
+    }
+
+    return true;
+  };
+
+  await configureChannel('default', {
     name: lang === 'ar' ? 'المنبهات العامة' : 'General reminders',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 180, 250],
     sound: 'default',
   });
 
-  await Notifications.setNotificationChannelAsync('adhan-silent', {
+  await configureChannel('adhan-silent', {
     name: lang === 'ar' ? 'الأذان الصامت' : 'Silent adhan',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [],
     sound: null,
   });
 
-  await Promise.all(
-    adhanVoiceOptions.map((voice) =>
-      Notifications.setNotificationChannelAsync(`adhan-${voice.id}`, {
+  for (const voice of adhanVoiceOptions) {
+    const channelId = `adhan-${voice.id}`;
+    const ok = await configureChannel(channelId, {
+      name: lang === 'ar' ? `أذان - ${voice.labelAr}` : `Adhan - ${voice.labelEn}`,
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 300, 200, 300],
+      ...(isExpoGo ? { sound: 'default' } : { sound: voice.notificationSound }),
+    });
+
+    if (!ok && !isExpoGo) {
+      await configureChannel(channelId, {
         name: lang === 'ar' ? `أذان - ${voice.labelAr}` : `Adhan - ${voice.labelEn}`,
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 300, 200, 300],
-        ...(isExpoGo ? { sound: 'default' } : { sound: voice.notificationSound }),
-      }),
-    ),
-  );
+        sound: 'default',
+      });
+    }
+  }
 
-  await Notifications.setNotificationChannelAsync('dhikr-loop', {
+  await configureChannel('dhikr-loop', {
     name: lang === 'ar' ? 'أذكار دورية' : 'Dhikr loop',
     importance: Notifications.AndroidImportance.HIGH,
     vibrationPattern: [0, 180, 120, 180],
@@ -584,6 +622,62 @@ const getAdhanFireDate = (
   return new Date(day.timestamps[prayer]);
 };
 
+const getPrivatePrayerNotificationText = (
+  kind: 'adhan' | 'pre_adhan',
+  lang: AppLang,
+) => ({
+  title: lang === 'ar' ? 'تنبيه صلاة' : 'Prayer reminder',
+  body:
+    kind === 'pre_adhan'
+      ? lang === 'ar'
+        ? 'اقترب موعد الصلاة.'
+        : 'Prayer time is coming soon.'
+      : lang === 'ar'
+        ? 'حان الآن موعد الصلاة.'
+        : 'It is now prayer time.',
+});
+
+const getPreAdhanNotificationText = (
+  prayer: AdhanPrayerName,
+  settings: PrayerSettings,
+  lang: AppLang,
+) => {
+  if (settings.notificationPreviewMode === 'private') {
+    return getPrivatePrayerNotificationText('pre_adhan', lang);
+  }
+
+  const prayerLabel = i18n.t(`prayer.names.${prayer}`, { lng: lang });
+  return {
+    title: lang === 'ar' ? `اقترب موعد ${prayerLabel}` : `${prayerLabel} is coming soon`,
+    body:
+      lang === 'ar'
+        ? `يتبقى ${settings.preAdhanReminderMinutes} دقيقة على أذان ${prayerLabel}`
+        : `${settings.preAdhanReminderMinutes} minutes left until ${prayerLabel}`,
+  };
+};
+
+const getAdhanNotificationText = (
+  prayer: AdhanPrayerName,
+  settings: PrayerSettings,
+  voiceLabel: string,
+  lang: AppLang,
+) => {
+  if (settings.notificationPreviewMode === 'private') {
+    return getPrivatePrayerNotificationText('adhan', lang);
+  }
+
+  const prayerLabel = i18n.t(`prayer.names.${prayer}`, { lng: lang });
+  return {
+    title: lang === 'ar' ? `أذان ${prayerLabel}` : `${prayerLabel} Adhan`,
+    body:
+      lang === 'ar'
+        ? `حان الآن موعد أذان ${prayerLabel} ${settings.notificationMode === 'silent' ? '' : `بصوت ${voiceLabel}`}`.trim()
+        : settings.notificationMode === 'silent'
+          ? `It is now time for ${prayerLabel}.`
+          : `Now: ${prayerLabel} adhan with ${voiceLabel}`,
+  };
+};
+
 const presentImmediateNotification = async (
   Notifications: typeof import('expo-notifications'),
   content: {
@@ -620,15 +714,20 @@ const getScheduledNotificationsByPrefix = async (
 };
 
 const syncRemindersInternal = async (reminders: ReminderSetting[], lang: AppLang) => {
-  const { Notifications, snapshot } = await getPermissionSnapshotWithModule(lang);
-  if (!snapshot.granted) return false;
-
+  const Notifications = await prepareLocalNotifications(lang);
   const existing = await getScheduledNotificationsByPrefix(Notifications, [REMINDER_PREFIX]);
   const enabled = sanitizeReminders(reminders).filter((item) => item.enabled);
   await cancelIdentifiers(
     Notifications,
     existing.map((item) => item.identifier),
   );
+
+  if (enabled.length === 0) {
+    return true;
+  }
+
+  const status = await Notifications.getPermissionsAsync();
+  if (!isNotificationPermissionGranted(status)) return false;
 
   if (Platform.OS === 'android') {
     const now = new Date();
@@ -707,37 +806,70 @@ const syncDhikrLoopNotificationsInternal = async (
     sendImmediateNow?: boolean;
   },
 ) => {
-  const { Notifications, snapshot } = await getPermissionSnapshotWithModule(lang);
-  if (!snapshot.granted) return false;
-
+  const Notifications = await prepareLocalNotifications(lang);
   const intervalMinutes = normalizeIntervalMinutes(settings.intervalMinutes);
   const cycleIndex = getRandomDhikrCycleIndex(lang);
   const immediateContent = getDhikrLoopContent(lang, cycleIndex);
 
+  const existingFallbacks = await getScheduledNotificationsByPrefix(Notifications, [DHIKR_LOOP_PREFIX]);
+  await Promise.all([
+    Notifications.cancelScheduledNotificationAsync(DHIKR_LOOP_ID).catch(() => undefined),
+    cancelIdentifiers(
+      Notifications,
+      existingFallbacks.map((item) => item.identifier),
+    ),
+  ]);
+  if (!settings.enabled) return true;
+
+  const status = await Notifications.getPermissionsAsync();
+  if (!isNotificationPermissionGranted(status)) return false;
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: DHIKR_LOOP_ID,
+      content: getDhikrLoopContent(lang, cycleIndex),
+      trigger:
+        Platform.OS === 'android'
+          ? {
+              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+              seconds: intervalMinutes * 60,
+              repeats: true,
+              channelId: 'dhikr-loop',
+            }
+          : {
+              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+              seconds: intervalMinutes * 60,
+              repeats: true,
+            },
+    });
+  } catch (error) {
+    if (Platform.OS !== 'android') {
+      throw error;
+    }
+
+    prayerLogger.warn('Repeating dhikr loop schedule failed; using rolling Android fallback', error);
+    const now = Date.now();
+    const intervalMs = intervalMinutes * 60_000;
+    const fallbackCount = Math.min(96, Math.max(1, Math.floor((24 * 60) / intervalMinutes)));
+
+    for (let index = 1; index <= fallbackCount; index += 1) {
+      const fireDate = new Date(now + index * intervalMs);
+      const fallbackCycleIndex = getRandomDhikrCycleIndex(lang);
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${DHIKR_LOOP_PREFIX}${index}`,
+        content: getDhikrLoopContent(lang, fallbackCycleIndex),
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fireDate,
+          channelId: 'dhikr-loop',
+        },
+      });
+    }
+  }
+
   if (options?.sendImmediateNow) {
     await presentImmediateNotification(Notifications, immediateContent, 'dhikr-loop');
   }
-
-  await Notifications.cancelScheduledNotificationAsync(DHIKR_LOOP_ID).catch(() => undefined);
-  if (!settings.enabled) return true;
-
-  await Notifications.scheduleNotificationAsync({
-    identifier: DHIKR_LOOP_ID,
-    content: getDhikrLoopContent(lang, cycleIndex),
-    trigger:
-      Platform.OS === 'android'
-        ? {
-            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-            seconds: intervalMinutes * 60,
-            repeats: true,
-            channelId: 'dhikr-loop',
-          }
-        : {
-            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-            seconds: intervalMinutes * 60,
-            repeats: true,
-          },
-  });
 
   return true;
 };
@@ -762,7 +894,8 @@ const buildAdhanDescriptors = async (
   now: Date,
 ) => {
   const voice = getAdhanVoiceById(settings.adhanVoice);
-  const descriptors: AdhanDescriptor[] = [];
+  const adhanDescriptors: AdhanDescriptor[] = [];
+  const preAdhanDescriptors: AdhanDescriptor[] = [];
   const maxDescriptors =
     Platform.OS === 'ios'
       ? await getAvailableIosAdhanSlots(Notifications)
@@ -785,8 +918,8 @@ const buildAdhanDescriptors = async (
         );
 
         if (preFireDate.getTime() > now.getTime() + MIN_SCHEDULE_LEAD_MS) {
-          const prayerLabel = i18n.t(`prayer.names.${prayer}`, { lng: lang });
-          descriptors.push({
+          const content = getPreAdhanNotificationText(prayer, settings, lang);
+          preAdhanDescriptors.push({
             id: `${PRE_ADHAN_PREFIX}${day.date}-${prayer}`,
             kind: 'pre_adhan',
             prayer,
@@ -794,11 +927,8 @@ const buildAdhanDescriptors = async (
             fireDate: preFireDate,
             channelId: 'default',
             sound: settings.notificationMode === 'silent' ? false : 'default',
-            title: lang === 'ar' ? `اقترب موعد ${prayerLabel}` : `${prayerLabel} is coming soon`,
-            body:
-              lang === 'ar'
-                ? `يتبقى ${settings.preAdhanReminderMinutes} دقيقة على أذان ${prayerLabel}`
-                : `${settings.preAdhanReminderMinutes} minutes left until ${prayerLabel}`,
+            title: content.title,
+            body: content.body,
             data: {
               kind: 'pre_adhan',
               prayer,
@@ -809,10 +939,10 @@ const buildAdhanDescriptors = async (
         }
       }
 
-      const prayerLabel = i18n.t(`prayer.names.${prayer}`, { lng: lang });
       const selectedVoiceLabel = lang === 'ar' ? voice.labelAr : voice.labelEn;
+      const content = getAdhanNotificationText(prayer, settings, selectedVoiceLabel, lang);
 
-      descriptors.push({
+      adhanDescriptors.push({
         id: `${ADHAN_PREFIX}${day.date}-${prayer}`,
         kind: 'adhan',
         prayer,
@@ -820,13 +950,8 @@ const buildAdhanDescriptors = async (
         fireDate,
         channelId: getAdhanChannelId(settings, settings.adhanVoice),
         sound: getAdhanSound(settings, settings.adhanVoice),
-        title: lang === 'ar' ? `أذان ${prayerLabel}` : `${prayerLabel} Adhan`,
-        body:
-          lang === 'ar'
-            ? `حان الآن موعد أذان ${prayerLabel} ${settings.notificationMode === 'silent' ? '' : `بصوت ${selectedVoiceLabel}`}`.trim()
-            : settings.notificationMode === 'silent'
-              ? `It is now time for ${prayerLabel}.`
-              : `Now: ${prayerLabel} adhan with ${selectedVoiceLabel}`,
+        title: content.title,
+        body: content.body,
         data: {
           kind: 'adhan',
           prayer,
@@ -836,19 +961,33 @@ const buildAdhanDescriptors = async (
           cityName: day.cityName,
         },
       });
-
-      if (descriptors.length >= maxDescriptors) {
-        return {
-          descriptors: descriptors.slice(0, maxDescriptors),
-          truncated: true,
-        };
-      }
     }
   }
 
+  const selectedDescriptors = (() => {
+    if (Platform.OS !== 'ios') {
+      return [...preAdhanDescriptors, ...adhanDescriptors]
+        .sort((left, right) => left.fireDate.getTime() - right.fireDate.getTime())
+        .slice(0, maxDescriptors);
+    }
+
+    // iOS caps pending local notifications, so prioritize the actual adhan alerts first
+    // and only fill remaining slots with pre-adhan reminders.
+    const prioritized = [...adhanDescriptors];
+    if (prioritized.length < maxDescriptors) {
+      prioritized.push(...preAdhanDescriptors.slice(0, maxDescriptors - prioritized.length));
+    }
+
+    return prioritized
+      .slice(0, maxDescriptors)
+      .sort((left, right) => left.fireDate.getTime() - right.fireDate.getTime());
+  })();
+
+  const totalDescriptors = adhanDescriptors.length + preAdhanDescriptors.length;
+
   return {
-    descriptors,
-    truncated: false,
+    descriptors: selectedDescriptors,
+    truncated: totalDescriptors > selectedDescriptors.length,
   };
 };
 
@@ -1006,6 +1145,13 @@ export const notificationService = {
     }
   },
 
+  getRuntimeEnvironment,
+
+  getEnvironmentIssue: () => {
+    const environment = getRuntimeEnvironment();
+    return environment.requiresDevelopmentBuild ? 'expo_go_limited' : null;
+  },
+
   getPermissionSnapshot: async (): Promise<PermissionSnapshot> => {
     try {
       const { snapshot } = await getPermissionSnapshotWithModule(getCurrentLang());
@@ -1149,6 +1295,7 @@ export const notificationService = {
           ADHAN_PREFIX,
           PRE_ADHAN_PREFIX,
           REMINDER_PREFIX,
+          DHIKR_LOOP_PREFIX,
         ]);
 
         await cancelIdentifiers(

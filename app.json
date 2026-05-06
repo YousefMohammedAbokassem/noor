@@ -37,11 +37,14 @@
         "POST_NOTIFICATIONS",
         "VIBRATE",
         "SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM",
         "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "plugins": [
+      "expo-dev-client",
       "expo-localization",
       [
         "expo-audio",

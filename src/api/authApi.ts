@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { ApiResponse, AuthResponse, LoginPayload, RegisterPayload, RegisterResponse } from '@/types/api';
+import { ApiResponse, AuthResponse, GoogleLoginPayload, LoginPayload, RegisterPayload, RegisterResponse } from '@/types/api';
 
 export const authApi = {
   register: async (payload: RegisterPayload) => {
@@ -8,6 +8,10 @@ export const authApi = {
   },
   login: async (payload: LoginPayload) => {
     const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/auth/login', payload);
+    return data.data;
+  },
+  googleLogin: async (payload: GoogleLoginPayload) => {
+    const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/auth/google', payload);
     return data.data;
   },
   refresh: async (refreshToken: string) => {

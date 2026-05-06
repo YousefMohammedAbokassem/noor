@@ -32,12 +32,12 @@ export const PrayerMainScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const prayerTimes = usePrayerStore((s) => s.prayerTimes);
-  const runtimeHealth = usePrayerStore((s) => s.runtimeHealth);
   const prayerSettings = useSettingsStore((s) => s.prayerSettings);
   const mode = useSettingsStore((s) => s.readerTheme);
   const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
   const isDark = mode === 'dark';
+  const isRTL = language === 'ar';
   const accentColor = isDark ? theme.colors.brand.softGold : theme.colors.brand.darkGreen;
   const effectivePrayerTimes = prayerTimes;
   const countdown = usePrayerCountdown(effectivePrayerTimes);
@@ -96,8 +96,8 @@ export const PrayerMainScreen: React.FC = () => {
       <InlineBackThemeBar onBack={goBack} />
 
       <AppCard style={[styles.heroCard, { backgroundColor: theme.colors.brand.darkGreen, borderColor: theme.colors.brand.green }]}>
-        <View style={styles.heroTopRow}>
-          <View style={styles.cityInfo}>
+        <View style={[styles.heroTopRow, isRTL && styles.rowReverse]}>
+          <View style={[styles.cityInfo, isRTL && styles.textWrapRtl]}>
             <AppText variant="headingSm" color={theme.colors.neutral.textOnBrand}>
               {effectivePrayerTimes.cityName}
             </AppText>
@@ -112,11 +112,11 @@ export const PrayerMainScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.nextPrayerRow}>
+        <View style={[styles.nextPrayerRow, isRTL && styles.rowReverse]}>
           <View style={styles.nextIconWrap}>
             <Ionicons name="time-outline" size={24} color="#F0D593" />
           </View>
-          <View style={styles.nextInfo}>
+          <View style={[styles.nextInfo, isRTL && styles.textWrapRtl]}>
             <AppText variant="bodySm" color="#CFE0D5">
               {t('prayer.nextPrayer')}
             </AppText>
@@ -135,6 +135,24 @@ export const PrayerMainScreen: React.FC = () => {
         </View>
       </AppCard>
 
+      <View style={[styles.primaryActionsRow, isRTL && styles.rowReverse]}>
+        <AppButton
+          title={t('prayer.settings')}
+          onPress={() => navigation.navigate('PrayerSettings')}
+          style={styles.primaryActionButton}
+        />
+        <AppButton
+          title={
+            prayerSettings.timeMode === 'manual'
+              ? t('prayer.editManualTimesAction')
+              : t('prayer.enableManualTimesAction')
+          }
+          onPress={openManualTiming}
+          variant="ghost"
+          style={styles.secondaryActionButton}
+        />
+      </View>
+
       <AppCard style={styles.timesCard}>
         {prayerConfig.map((item) => {
           const isNext = countdown.nextName === item.key;
@@ -145,6 +163,7 @@ export const PrayerMainScreen: React.FC = () => {
               key={item.key}
               style={[
                 styles.timeRow,
+                isRTL && styles.rowReverse,
                 {
                   borderColor: isNext ? '#CFAE5C' : theme.colors.neutral.border,
                   backgroundColor: isNext
@@ -155,7 +174,7 @@ export const PrayerMainScreen: React.FC = () => {
                 },
               ]}
             >
-              <View style={styles.timeRowLeft}>
+              <View style={[styles.timeRowLeft, isRTL && styles.rowReverse]}>
                 <View style={[styles.timeIconWrap, { backgroundColor: isNext ? 'rgba(233,208,139,0.2)' : theme.colors.brand.mist }]}>
                   <Ionicons
                     name={item.icon}
@@ -175,34 +194,7 @@ export const PrayerMainScreen: React.FC = () => {
         })}
       </AppCard>
 
-      {(runtimeHealth.issues.length > 0 || runtimeHealth.scheduledUntil) && (
-        <AppCard style={styles.statusCard}>
-          <AppText variant="headingSm">{t('prayer.reliabilityTitle')}</AppText>
-          <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
-            {t('prayer.reliabilitySummary', {
-              until: runtimeHealth.scheduledUntil ?? '--',
-              count: runtimeHealth.scheduledCount,
-            })}
-          </AppText>
-          {runtimeHealth.issues.length > 0 && (
-            <AppText variant="bodySm" color={theme.colors.neutral.warning}>
-              {runtimeHealth.issues.map((issue) => t(`prayer.runtimeIssues.${issue}`)).join(' • ')}
-            </AppText>
-          )}
-        </AppCard>
-      )}
-
       <View style={styles.actions}>
-        <AppButton title={t('prayer.settings')} onPress={() => navigation.navigate('PrayerSettings')} />
-        <AppButton
-          title={
-            prayerSettings.timeMode === 'manual'
-              ? t('prayer.editManualTimesAction')
-              : t('prayer.enableManualTimesAction')
-          }
-          onPress={openManualTiming}
-          variant="ghost"
-        />
         <AppNavigationItem
           icon="compass-outline"
           label={t('more.qibla')}
@@ -219,7 +211,7 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: 8,
     paddingBottom: 24,
-    gap: 10,
+    gap: 12,
   },
   emptyCard: {
     alignItems: 'center',
@@ -237,7 +229,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   heroCard: {
-    gap: 10,
+    gap: 12,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -245,9 +237,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
   cityInfo: {
     flex: 1,
     gap: 2,
+  },
+  textWrapRtl: {
+    alignItems: 'flex-end',
   },
   dateBadge: {
     minHeight: 34,
@@ -290,6 +288,8 @@ const styles = StyleSheet.create({
   },
   timesCard: {
     gap: 8,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   statusCard: {
     gap: 6,
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
     borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -315,8 +315,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actions: {
+  primaryActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
+  },
+  primaryActionButton: {
+    flex: 1,
+  },
+  secondaryActionButton: {
+    flex: 1,
+  },
+  actions: {
+    gap: 8,
   },
   qiblaShortcut: {
     marginTop: 2,

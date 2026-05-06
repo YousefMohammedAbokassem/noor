@@ -12,6 +12,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSettingsStore } from '@/state/settingsStore';
 import { getTabBarTheme, tabBarSizes } from './tabBarTheme';
+import { RosaryTabIcon } from './RosaryTabIcon';
+import { QuranTabIcon } from './QuranTabIcon';
+import { QiblaTabIcon } from './QiblaTabIcon';
 
 const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
 const AnimatedMaterialCommunityIcons = Animated.createAnimatedComponent(MaterialCommunityIcons);
@@ -115,7 +118,13 @@ export const CenterTabButton: React.FC<Props> = ({
       >
         <View style={[styles.outerShell, { backgroundColor: tabBarTheme.colors.centerOuter }]}>
           <Animated.View style={[styles.inner, { borderColor: tabBarTheme.colors.centerRing }, innerStyle]}>
-            {icon.library === 'materialCommunity' ? (
+            {icon.library === 'custom' && icon.name === 'rosary' ? (
+              <RosaryTabIcon color={tabBarTheme.colors.centerIcon} size={26} focused={focused} />
+            ) : icon.library === 'custom' && icon.name === 'quran' ? (
+              <QuranTabIcon color={tabBarTheme.colors.centerIcon} size={26} focused={focused} />
+            ) : icon.library === 'custom' && icon.name === 'qibla' ? (
+              <QiblaTabIcon color={tabBarTheme.colors.centerIcon} size={26} focused={focused} />
+            ) : icon.library === 'materialCommunity' ? (
                 <AnimatedMaterialCommunityIcons
                   animatedProps={iconAnimatedProps as never}
                   name={icon.name as never}

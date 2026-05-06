@@ -67,7 +67,7 @@ export const AdhkarCategoriesScreen: React.FC = () => {
         entering={FadeIn.duration(240)}
         style={[styles.hero, { backgroundColor: theme.colors.brand.darkGreen, borderColor: theme.colors.brand.green }]}
       >
-        <View style={styles.heroTopRow}>
+        <View style={[styles.heroTopRow, isRTL && styles.rowReverse]}>
           <AppText variant="headingSm" color={theme.colors.neutral.textOnBrand}>
             {t('adhkar.categories')}
           </AppText>
@@ -95,6 +95,7 @@ export const AdhkarCategoriesScreen: React.FC = () => {
                 <View
                   style={[
                     styles.card,
+                    isRTL && styles.rowReverse,
                     {
                       borderColor: theme.colors.neutral.borderStrong,
                       backgroundColor: theme.colors.neutral.surface,
@@ -105,7 +106,7 @@ export const AdhkarCategoriesScreen: React.FC = () => {
                     <Ionicons name={iconMap[item.icon] ?? 'ellipse-outline'} size={22} color="#FFFFFF" />
                   </View>
 
-                  <View style={styles.textWrap}>
+                  <View style={[styles.textWrap, isRTL && styles.textWrapRtl]}>
                     <AppText variant="headingSm">{language === 'ar' ? item.titleAr : item.titleEn}</AppText>
                   </View>
 
@@ -177,6 +178,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  rowReverse: {
+    flexDirection: 'row-reverse',
+  },
   iconWrap: {
     width: 48,
     height: 48,
@@ -187,6 +191,9 @@ const styles = StyleSheet.create({
   textWrap: {
     flex: 1,
     gap: 2,
+  },
+  textWrapRtl: {
+    alignItems: 'flex-end',
   },
   trailing: {
     minWidth: 44,

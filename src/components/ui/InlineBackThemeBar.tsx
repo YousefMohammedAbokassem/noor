@@ -27,6 +27,7 @@ export const InlineBackThemeBar: React.FC<Props> = ({ onBack }) => {
         onPress={onBack}
         style={({ pressed }) => [
           styles.backButton,
+          { flexDirection: isRTL ? 'row-reverse' : 'row' },
           {
             borderColor: theme.colors.neutral.border,
             backgroundColor: theme.colors.neutral.surface,
@@ -61,7 +62,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 12,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,

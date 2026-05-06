@@ -1,17 +1,16 @@
 import React, { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from '@/navigation/types';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
-import { AppCard } from '@/components/ui/AppCard';
-import { AppInput } from '@/components/ui/AppInput';
-import { AppButton } from '@/components/ui/AppButton';
 import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { surahList } from '@/constants/quran';
 import { QuranTopBar } from '@/features/quran/components/QuranTopBar';
+import { QuranIndexTabs } from '@/features/quran/components/QuranIndexTabs';
+import { QuranSearchField } from '@/features/quran/components/QuranSearchField';
+import { QuranSurahRow } from '@/features/quran/components/QuranSurahRow';
 import { useKhatmaStore } from '@/state/khatmaStore';
 import { useQuranUiStore } from '@/state/quranUiStore';
 import { useSettingsStore } from '@/state/settingsStore';
@@ -30,10 +29,10 @@ export const SurahIndexScreen: React.FC<Props> = ({ navigation }) => {
   const mode = useSettingsStore((s) => s.readerTheme);
   const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
-  const isDark = mode === 'dark';
   const isRTL = language === 'ar';
-  const accentColor = isDark ? theme.colors.brand.softGold : theme.colors.brand.darkGreen;
-  const surahListRef = useResetFlatListOnFocus<(typeof surahList)[number]>();
+  const { listRef: surahListRef, handleScroll } = useResetFlatListOnFocus<(typeof surahList)[number]>(
+    'quran-surah-index',
+  );
 
   const filteredSurahs = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -67,51 +66,45 @@ export const SurahIndexScreen: React.FC<Props> = ({ navigation }) => {
     <Screen scroll={false} showDecorations={false} showThemeToggle={false} contentStyle={styles.screen}>
       <QuranTopBar
         title={t('quran.surahIndex')}
-        subtitle={t('quran.surahIndexSubtitle')}
         onBack={() => navigation.goBack()}
-        rightSlot={
-          <View style={styles.topActions}>
-            <View style={[styles.counterBadge, { backgroundColor: theme.colors.brand.mist }]}>
-              <AppText variant="bodySm" color={accentColor}>
-                {filteredSurahs.length}
-              </AppText>
-            </View>
-            <ThemeToggleButton compact />
-          </View>
-        }
+        rightSlot={<ThemeToggleButton compact />}
       />
 
-      <AppCard style={styles.heroCard}>
-        <View style={[styles.heroCircle, { backgroundColor: theme.colors.brand.softGold }]} />
-        <Ionicons name="book-outline" size={28} color={accentColor} />
-        <AppText variant="headingLg">{t('quran.homeTitle')}</AppText>
-        <AppText variant="bodyMd" color={theme.colors.neutral.textSecondary}>
-          {t('quran.surahHeroDescription')}
-        </AppText>
-        <View style={styles.heroActions}>
-          <AppButton
-            title={`${t('home.continueReading')} ${language === 'ar' ? currentSurah.nameAr : currentSurah.nameEn}`}
-            variant="secondary"
-            onPress={() =>
-              navigation.navigate('QuranReader', {
-                page: continuePage,
-                surah: currentSurah.id,
-                juz: currentSurah.juz,
-              })
-            }
-            style={{ flex: 1 }}
-          />
-          <AppButton
-            title={t('quran.juzIndex')}
-            variant="ghost"
-            onPress={() => navigation.navigate('JuzIndex')}
-            style={{ flex: 1 }}
-          />
-        </View>
-      </AppCard>
+      <QuranIndexTabs
+        activeTab="surah"
+        onPressSurah={() => undefined}
+        onPressJuz={() => navigation.navigate('JuzIndex')}
+      />
 
-      <AppInput
-        label={t('quran.searchSurah')}
+      <Pressable
+        onPress={() =>
+          navigation.navigate('QuranReader', {
+            page: continuePage,
+            surah: currentSurah.id,
+            juz: currentSurah.juz,
+          })
+        }
+        style={[
+          styles.continueStrip,
+          {
+            borderColor: theme.colors.neutral.border,
+            backgroundColor: theme.colors.neutral.surfaceAlt,
+            flexDirection: isRTL ? 'row-reverse' : 'row',
+          },
+        ]}
+      >
+        <View style={styles.continueTextWrap}>
+          <AppText variant="label">{t('quran.continueFromLast')}</AppText>
+          <AppText variant="bodySm" color={theme.colors.neutral.textSecondary} numberOfLines={1}>
+            {`${language === 'ar' ? currentSurah.nameAr : currentSurah.nameEn} • ${t('quran.page')} ${continuePage}`}
+          </AppText>
+        </View>
+        <AppText variant="label" color={theme.colors.neutral.textSecondary}>
+          {filteredSurahs.length}
+        </AppText>
+      </Pressable>
+
+      <QuranSearchField
         placeholder={t('quran.searchPlaceholder')}
         value={query}
         onChangeText={setQuery}
@@ -125,16 +118,19 @@ export const SurahIndexScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         ListEmptyComponent={
-          <AppCard>
+          <View style={[styles.emptyState, { borderColor: theme.colors.neutral.border }]}>
             <AppText variant="headingSm">{t('quran.noResults')}</AppText>
             <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
               {t('quran.tryAnotherSearch')}
             </AppText>
-          </AppCard>
+          </View>
         }
         renderItem={({ item }) => (
-          <Pressable
+          <QuranSurahRow
+            item={item}
             onPress={() =>
               navigation.navigate('QuranReader', {
                 page: item.startPage,
@@ -142,28 +138,7 @@ export const SurahIndexScreen: React.FC<Props> = ({ navigation }) => {
                 juz: item.juz,
               })
             }
-          >
-            <AppCard style={styles.card}>
-              <View style={[styles.orderBadge, { backgroundColor: theme.colors.brand.mist }]}>
-                <AppText variant="label" color={accentColor}>
-                  {item.id}
-                </AppText>
-              </View>
-
-              <View style={styles.cardBody}>
-                <AppText variant="headingSm">{language === 'ar' ? item.nameAr : item.nameEn}</AppText>
-                <AppText variant="bodySm" color={theme.colors.neutral.textSecondary}>
-                  {t('quran.surahMeta', { start: item.startPage, end: item.endPage, verses: item.versesCount })}
-                </AppText>
-              </View>
-
-              <Ionicons
-                name={isRTL ? 'chevron-back' : 'chevron-forward'}
-                size={20}
-                color={accentColor}
-              />
-            </AppCard>
-          </Pressable>
+          />
         )}
       />
     </Screen>
@@ -173,36 +148,7 @@ export const SurahIndexScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    gap: 14,
-  },
-  counterBadge: {
-    minWidth: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  heroCard: {
-    gap: 12,
-    overflow: 'hidden',
-  },
-  heroCircle: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 999,
-    top: -36,
-    left: -28,
-    opacity: 0.22,
-  },
-  heroActions: {
-    flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   list: {
     flex: 1,
@@ -210,21 +156,23 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 24,
   },
-  card: {
-    marginBottom: 10,
-    flexDirection: 'row',
+  continueStrip: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: 18,
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
+    paddingHorizontal: 14,
   },
-  orderBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardBody: {
+  continueTextWrap: {
     flex: 1,
-    gap: 2,
+    minWidth: 0,
+  },
+  emptyState: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 16,
+    gap: 6,
   },
 });

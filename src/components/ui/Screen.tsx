@@ -23,8 +23,7 @@ export const Screen: React.FC<Props> = ({
   const mode = useSettingsStore((s) => s.readerTheme);
   const language = useAuthStore((s) => s.language);
   const theme = getThemeByMode(mode);
-  const direction = language === 'ar' ? 'rtl' : 'ltr';
-  const actionsJustify = language === 'ar' ? 'flex-start' : 'flex-end';
+  const isRTL = language === 'ar';
 
   const body = scroll ? (
     <ScrollView
@@ -33,7 +32,6 @@ export const Screen: React.FC<Props> = ({
         {
           padding: theme.spacing.md,
           gap: theme.spacing.md,
-          direction,
         },
         contentStyle,
       ]}
@@ -49,7 +47,6 @@ export const Screen: React.FC<Props> = ({
         {
           padding: theme.spacing.md,
           gap: theme.spacing.md,
-          direction,
         },
         contentStyle,
       ]}
@@ -59,14 +56,15 @@ export const Screen: React.FC<Props> = ({
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.neutral.background, direction }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.neutral.background }]}>
       <StatusBar barStyle={mode === 'dark' ? 'light-content' : 'dark-content'} />
       {showThemeToggle && (
         <View
           style={[
             styles.topActionRow,
             {
-              justifyContent: actionsJustify,
+              justifyContent: isRTL ? 'flex-start' : 'flex-end',
+              flexDirection: isRTL ? 'row-reverse' : 'row',
               paddingHorizontal: theme.spacing.md,
               paddingTop: theme.spacing.xs,
             },

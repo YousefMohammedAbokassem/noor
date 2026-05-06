@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { RootStackParamList } from './types';
@@ -38,10 +39,56 @@ import { getThemeByMode } from '@/theme';
 import { ThemeToggleButton } from '@/components/ui/ThemeToggleButton';
 import { adhkarCategories } from '@/constants/adhkar';
 import { goBackSmart } from './goBackSmart';
+import { notificationService } from '@/services/notificationService';
+import { locationService } from '@/services/locationService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const MainTabsGate: React.FC = () => <AppTabs />;
+const MainTabsGate: React.FC = () => {
+  const navigation = useNavigation<any>();
+  const [ready, setReady] = React.useState(false);
+
+  const verifyRequiredPermissions = React.useCallback(
+    async (options?: { keepReady?: boolean }) => {
+      try {
+        const [notificationGranted, locationGranted] = await Promise.all([
+          notificationService.getPermissionStatus(),
+          locationService.getPermissionStatus(),
+        ]);
+
+        if (!notificationGranted || !locationGranted) {
+          setReady(false);
+          navigation.replace('PermissionGate', { nextRoute: 'MainTabs' });
+          return;
+        }
+
+        if (!options?.keepReady) {
+          setReady(true);
+        }
+      } catch {
+        setReady(false);
+        navigation.replace('PermissionGate', { nextRoute: 'MainTabs' });
+      }
+    },
+    [navigation],
+  );
+
+  React.useEffect(() => {
+    void verifyRequiredPermissions();
+  }, [verifyRequiredPermissions]);
+
+  React.useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void verifyRequiredPermissions({ keepReady: true });
+      }
+    });
+
+    return () => subscription.remove();
+  }, [verifyRequiredPermissions]);
+
+  return ready ? <AppTabs /> : null;
+};
 
 const adhkarHeaderIconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
   sun: 'sunny-outline',
@@ -126,7 +173,7 @@ export const RootNavigator = () => {
     const content = items.filter(Boolean);
     if (content.length === 0) return null;
 
-    return <View style={styles.headerCluster}>{content}</View>;
+    return <View style={[styles.headerCluster, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>{content}</View>;
   };
 
   return (
@@ -270,7 +317,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerCluster: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },

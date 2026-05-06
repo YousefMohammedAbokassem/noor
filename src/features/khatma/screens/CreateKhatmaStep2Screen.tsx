@@ -11,11 +11,14 @@ import { useKhatmaStore } from '@/state/khatmaStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { TOTAL_QURAN_PAGES } from '@/constants/quran';
 import { getThemeByMode } from '@/theme';
+import { useAuthStore } from '@/state/authStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateKhatmaStep2'>;
 
 export const CreateKhatmaStep2Screen: React.FC<Props> = ({ route, navigation }) => {
   const { t } = useTranslation();
+  const language = useAuthStore((s) => s.language);
+  const isRTL = language === 'ar';
   const [mode, setMode] = useState<'duration' | 'daily'>('duration');
   const [duration, setDuration] = useState(30);
   const [dailyPages, setDailyPages] = useState(20);
@@ -61,7 +64,7 @@ export const CreateKhatmaStep2Screen: React.FC<Props> = ({ route, navigation }) 
       </View>
 
       <AppCard>
-        <View style={styles.modeRow}>
+        <View style={[styles.modeRow, isRTL && styles.rowReverse]}>
           <AppButton
             title={t('khatma.byDuration')}
             onPress={() => setMode('duration')}
@@ -81,7 +84,7 @@ export const CreateKhatmaStep2Screen: React.FC<Props> = ({ route, navigation }) 
         <AppText variant="label" style={{ textAlign: 'center' }}>
           {mode === 'duration' ? t('khatma.durationDaysLabel') : t('khatma.dailyPagesLabel')}
         </AppText>
-        <View style={styles.counterRow}>
+        <View style={[styles.counterRow, isRTL && styles.rowReverse]}>
           <AppButton
             title="+"
             variant="ghost"
@@ -156,6 +159,9 @@ const styles = StyleSheet.create({
   modeRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  rowReverse: {
+    flexDirection: 'row-reverse',
   },
   counterCard: {
     gap: 12,

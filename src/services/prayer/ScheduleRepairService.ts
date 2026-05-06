@@ -112,7 +112,10 @@ export class ScheduleRepairService {
       this.settingsRepo.setLocationGranted(locationPermissionGranted === true);
 
       if (locationPermissionGranted) {
-        if (options.allowLocationRefresh !== false) {
+        const coordinatesMissing =
+          typeof settings.latitude !== 'number' || typeof settings.longitude !== 'number';
+
+        if (options.allowLocationRefresh !== false || coordinatesMissing) {
           try {
             const snapshot = await locationService.resolveAutoPrayerLocation();
             settings = this.settingsRepo.savePrayerSettings({
@@ -215,16 +218,19 @@ export class ScheduleRepairService {
       clockMovedBack ||
       repairState.lastKnownTimeZone !== undefined && repairState.lastKnownTimeZone !== timeZone;
 
-    await notificationService.syncSupplementalNotifications({
-      reminders: this.settingsRepo.getReminders(),
-      dhikrLoopSettings: this.settingsRepo.getDhikrLoopSettings(),
-      lang,
-    });
-
     if (!permissionSnapshot.granted) {
       await notificationService.clearAccountScopedNotifications();
       issues.push('notification_permission_missing');
     } else if (nextDays.length > 0) {
+      const supplementalSynced = await notificationService.syncSupplementalNotifications({
+        reminders: this.settingsRepo.getReminders(),
+        dhikrLoopSettings: this.settingsRepo.getDhikrLoopSettings(),
+        lang,
+      });
+      if (!supplementalSynced) {
+        issues.push('notifications_missing');
+      }
+
       const adhanSchedule = await notificationService.ensureAdhanSchedule({
         days: nextDays,
         settings,
@@ -246,6 +252,11 @@ export class ScheduleRepairService {
 
     if (!this.backgroundTaskRegistered) {
       issues.push('background_task_unavailable');
+    }
+
+    const environmentIssue = notificationService.getEnvironmentIssue?.();
+    if (environmentIssue) {
+      issues.push(environmentIssue);
     }
 
     const healthIssues = uniqueIssues(issues);
